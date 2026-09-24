@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Fitness Tracker</title>
+
+
+    <!-- =====================================================
+         HIDE APP UNTIL APP.JS FINISHES LOADING
+         ===================================================== -->
+
+    <style>
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+        }
+
+
+        body.loading {
+            visibility: hidden;
+        }
+
+
+        body.app-ready {
+            visibility: visible;
+        }
+
+
+        body {
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                #f4f5f7;
+
+            color:
+                #111827;
+        }
+
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        .app {
+            width: 100%;
+            max-width: 760px;
+
+            margin: 0 auto;
+
+            padding:
+                24px 16px 60px;
+        }
+
+
+        .header {
+            margin-bottom: 24px;
+        }
+
+
+        .header h1 {
+            margin: 0 0 8px;
+
+            font-size: 34px;
+
+            font-weight: 700;
+        }
+
+
+        .header p {
+            margin: 4px 0;
+
+            color:
+                #6b7280;
+
+            font-size: 17px;
+        }
+
+
+        .card {
+            background:
+                white;
+
+            border-radius:
+                20px;
+
+            padding:
+                24px;
+
+            margin-bottom:
+                20px;
+
+            box-shadow:
+                0 4px 18px
+                rgba(0,0,0,0.06);
+        }
+
+
+        .card-title {
+            font-size: 20px;
+
+            font-weight: 500;
+
+            margin-bottom:
+                16px;
+        }
+
+
+        .progress-bar {
+            width: 100%;
+
+            height: 13px;
+
+            background:
+                #e5e7eb;
+
+            border-radius:
+                20px;
+
+            overflow: hidden;
+
+            margin:
+                10px 0 14px;
+        }
+
+
+        .progress-bar > div {
+            height: 100%;
+
+            width: 0%;
+
+            background:
+                #111827;
+
+            border-radius:
+                20px;
+
+            transition:
+                width 0.3s ease;
+        }
+
+
+        .activity-item {
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items:
+                center;
+
+            gap: 16px;
+
+            padding:
+                16px 0;
+
+            border-bottom:
+                1px solid #e5e7eb;
+        }
+
+
+        .activity-item:last-child {
+            border-bottom:
+                none;
+        }
+
+
+        .activity-item strong {
+            font-size: 19px;
+        }
+
+
+        .activity-item p {
+            margin:
+                8px 0 0;
+
+            color:
+                #6b7280;
+        }
+
+
+        button {
+            width: 100%;
+
+            border: none;
+
+            border-radius:
+                14px;
+
+            padding:
+                14px 18px;
+
+            background:
+                #111827;
+
+            color:
+                white;
+
+            font-size:
+                17px;
+
+            font-weight:
+                600;
+
+            cursor:
+                pointer;
+        }
+
+
+        button:hover {
+            opacity:
+                0.9;
+        }
+
+
+        .activity-button {
+            width:
+                120px;
+
+            flex-shrink:
+                0;
+        }
+
+
+        .check-row {
+            display: flex;
+
+            align-items:
+                center;
+
+            gap: 14px;
+
+            padding:
+                16px 0;
+
+            border-bottom:
+                1px solid #e5e7eb;
+
+            font-size:
+                18px;
+
+            cursor:
+                pointer;
+        }
+
+
+        .check-row:last-child {
+            border-bottom:
+                none;
+        }
+
+
+        .check-row input {
+            width:
+                24px;
+
+            height:
+                24px;
+        }
+
+
+        .summary-item {
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            gap: 16px;
+
+            padding:
+                14px 0;
+
+            border-bottom:
+                1px solid #e5e7eb;
+        }
+
+
+        .summary-item:last-child {
+            border-bottom:
+                none;
+        }
+
+
+        .summary-item span {
+            color:
+                #6b7280;
+
+            text-align:
+                right;
+        }
+
+
+        .grid2 {
+            display:
+                grid;
+
+            grid-template-columns:
+                1fr 1fr;
+
+            gap:
+                14px;
+
+            margin-bottom:
+                18px;
+        }
+
+
+        label {
+            display:
+                block;
+
+            font-size:
+                15px;
+
+            color:
+                #374151;
+        }
+
+
+        input[type="number"] {
+            width:
+                100%;
+
+            margin-top:
+                8px;
+
+            padding:
+                13px;
+
+            border:
+                1px solid #d1d5db;
+
+            border-radius:
+                10px;
+
+            font-size:
+                16px;
+        }
+
+
+        .status {
+            min-height:
+                20px;
+
+            margin-top:
+                12px;
+
+            color:
+                #6b7280;
+        }
+
+
+        .progress-box {
+            background:
+                white;
+
+            border-radius:
+                20px;
+
+            padding:
+                20px;
+
+            margin-bottom:
+                20px;
+        }
+
+
+        .progress-text {
+            margin-bottom:
+                10px;
+
+            font-weight:
+                600;
+        }
+
+
+        .exercise {
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            gap:
+                14px;
+
+            padding:
+                16px 0;
+
+            border-bottom:
+                1px solid #e5e7eb;
+
+            cursor:
+                pointer;
+        }
+
+
+        .exercise input {
+            width:
+                24px;
+
+            height:
+                24px;
+        }
+
+
+        .exercise-text {
+            font-size:
+                17px;
+
+            line-height:
+                1.5;
+        }
+
+
+        @media (
+            max-width: 600px
+        ) {
+
+            .app {
+                padding:
+                    18px 12px 40px;
+            }
+
+
+            .header h1 {
+                font-size:
+                    30px;
+            }
+
+
+            .card {
+                padding:
+                    20px;
+
+                border-radius:
+                    18px;
+            }
+
+
+            .grid2 {
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .activity-item {
+                align-items:
+                    flex-start;
+            }
+
+
+            .activity-button {
+                width:
+                    90px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body class="loading">
+
+
+    <!-- =====================================================
+         APP ROOT
+         Không đặt giao diện cũ ở đây.
+         app.js sẽ tự render.
+         ===================================================== -->
+
+    <main
+        class="app"
+        id="app"
+    ></main>
+
+
+    <!-- =====================================================
+         APP JAVASCRIPT
+         ===================================================== -->
+
+    <script src="app.js"></script>
+
+
+    <!-- =====================================================
+         REMOVE LOADING SCREEN
+         ===================================================== -->
+
+    <script>
+
+        window.addEventListener(
+            "fitnessAppReady",
+            function () {
+
+                document.body.classList.remove(
+                    "loading"
+                );
+
+                document.body.classList.add(
+                    "app-ready"
+                );
+
+            }
+        );
+
+
+        // Nếu app.js gặp lỗi nghiêm trọng,
+        // vẫn hiện trang sau 5 giây để không bị trắng.
+
+        setTimeout(
+            function () {
+
+                document.body.classList.remove(
+                    "loading"
+                );
+
+                document.body.classList.add(
+                    "app-ready"
+                );
+
+            },
+            5000
+        );
+
+    </script>
+
+</body>
+
+</html>
