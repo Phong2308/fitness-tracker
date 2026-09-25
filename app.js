@@ -132,6 +132,16 @@ function builtInCalisthenics(item) {
 }
 
 async function loadSessionExercises(item) {
+    if (item.personalWorkoutId) {
+        const userId=getCurrentUserId();
+        if (item.personalUserId!==userId) throw new Error("Bài tập không thuộc nhân vật hiện tại.");
+        const result=await personalWorkoutRequest({action:'getPersonalWorkouts',userId});
+        if(result.userId!==userId) throw new Error("Thư viện trả về sai nhân vật.");
+        const own=result.data.find(w=>w.id===item.personalWorkoutId);
+        if(!own) throw new Error("Không tìm thấy bài tập riêng.");
+        item.activity=own.name;item.target=new Set(own.rows.map(r=>r.round)).size+' vòng';item.restSeconds=own.restSeconds;
+        return {rows:validateLibrary(own.rows),fallback:false};
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
     try {
@@ -149,7 +159,7 @@ function renderRoundWorkout(app, item, rows, fallback, active) {
     const rounds = [...new Set(rows.map(row => row.round))];
     const checked = new Set();
     const started = Date.now();
-    let index = 0, restSeconds = 60, timer = null, saved = false, resting = false;
+    let index = 0, restSeconds = item.personalWorkoutId ? item.restSeconds : 60, timer = null, saved = false, resting = false;
     const stop = () => { if (timer !== null) clearTimeout(timer); timer = null; };
     app.stopWorkoutTimer = stop;
     function render() {
@@ -201,7 +211,7 @@ function renderRoundWorkout(app, item, rows, fallback, active) {
         if (!active() || saved) return;
         try {
             const minutes = Math.max(0.1, Math.round((Date.now()-started)/6000)/10);
-            saveWorkoutEntry("calisthenics", minutes, rounds.length, "Hoàn thành từng bài; thời gian bao gồm nghỉ giữa vòng.");
+            saveWorkoutEntry("calisthenics", minutes, rounds.length, (item.personalWorkoutId ? item.activity + ". " : "") + "Hoàn thành từng bài; thời gian bao gồm nghỉ giữa vòng.", item.personalWorkoutId ? item.target : undefined);
             saved = true;
             app.innerHTML = `<section class="card"><h2>✅ Hoàn thành bài tập</h2><p>${rounds.length} vòng · ${checked.size}/${rows.length} bài · ${minutes} phút (gồm thời gian nghỉ)</p><p>Đã lưu trên máy cho nhân vật hiện tại. Chưa đồng bộ Sheet.</p><button id="finishedHome" type="button">Về Home</button></section>`;
             document.getElementById("finishedHome").onclick = showHome;
@@ -308,7 +318,7 @@ function saveHabitValue(kind, value) {
     saveTodayData(today);
 }
 
-function saveWorkoutEntry(type, minutes, amount, note) {
+function saveWorkoutEntry(type, minutes, amount, note, targetOverride) {
     if (!Object.hasOwn(WORKOUT_TYPES, type)) throw new Error("Hoạt động không hợp lệ.");
     const duration = Number(minutes), quantity = Number(amount);
     if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(quantity) || quantity <= 0) throw new Error("Thời gian và kết quả phải lớn hơn 0.");
@@ -317,7 +327,7 @@ function saveWorkoutEntry(type, minutes, amount, note) {
     const entry = { id: Date.now() + "-" + Math.random().toString(36).slice(2), type,
         minutes: duration, distance: type === "calisthenics" ? null : quantity,
         distanceUnit: type === "swimming" ? "m" : "km", rounds: type === "calisthenics" ? quantity : null,
-        note: String(note || ""), target: getTodayPlan().filter(item=>resolveWorkoutType(item) === type).map(item=>item.target).join("; "), completed: true, at: new Date().toISOString() };
+        note: String(note || ""), target: targetOverride ?? getTodayPlan().filter(item=>resolveWorkoutType(item) === type).map(item=>item.target).join("; "), completed: true, at: new Date().toISOString() };
     today.workoutEntries = [...(today.workoutEntries || []), entry];
     today.completedDay = homeProgress(today, getTodayPlan()) === 100;
     saveTodayData(today);
@@ -363,10 +373,11 @@ function showHome() {
         <section class="card"><h2>📝 Cơ thể &amp; Ăn uống</h2><form id="bodyForm"><label>⚖️ Cân nặng (kg)<input name="weight" type="number" min="0.1" step="0.1" value="${htmlText(today.weight ?? "")}" placeholder="Không bắt buộc"></label><button type="submit">Lưu cân nặng</button><p role="alert"></p></form><label><input id="foodControlled" type="checkbox" ${today.foodControlled ? "checked" : ""}> Ăn uống có kiểm soát</label></section>
         <section class="card"><h2>🎯 Hôm nay tập gì?</h2>${plan.map((item,index)=>`<article class="habit-item"><h3>${htmlText(item.activity)}</h3><p>Mục tiêu: ${htmlText(item.duration)} · ${htmlText(item.target)}</p><p>Giờ dự kiến: ${htmlText(item.time)}</p>${isPlannedWorkoutComplete(item, today) ? '<p role="status" style="color:#15803d;font-weight:600">✅ Đã hoàn thành bài tập hôm nay</p>' : resolveWorkoutType(item) ? `<button type="button" data-start-workout="${index}">Bắt đầu tập</button>` : ""}</article>`).join("") || '<p>Chưa có kế hoạch cho hôm nay trong Weekly Plan.</p>'}
         <div class="replacement-workout"><h3>Workout thay thế</h3><label for="actualWorkoutType">Hoạt động</label><select id="actualWorkoutType" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font:inherit">${Object.entries(WORKOUT_TYPES).map(([id,label])=>`<option value="${id}">${label}</option>`).join("")}</select>
-        <div class="workout-actions"><button id="startReplacement" type="button">Bắt đầu bài thay thế</button></div>
+        <div class="workout-actions"><button id="startReplacement" type="button">Bắt đầu bài thay thế</button><button id="personalWorkouts" type="button">Bài tập của tôi · + Tạo bài</button></div>
         ${(today.workoutEntries || []).map(e=>`<p>✅ ${WORKOUT_TYPES[e.type]} · ${e.minutes} phút · ${e.rounds === null ? e.distance + " " + e.distanceUnit : e.rounds + " vòng"}${e.note ? " · " + htmlText(e.note) : ""}</p>`).join("")}
         <p class="local-status">${pendingFitnessDays(getCurrentUserId()).length ? "Có dữ liệu trên máy chưa đồng bộ." : "Dữ liệu đã gửi sẽ được giữ lại trên máy."}</p><button id="syncFitnessButton" type="button" ${fitnessSyncBusy ? "disabled" : ""}>${fitnessSyncBusy ? "Đang đồng bộ…" : "Đồng bộ Google Sheet"}</button><p role="status" class="local-status">${htmlText(fitnessSyncMessages[getCurrentUserId()] || "Đồng bộ thói quen, cơ thể và tổng kết workout vào Daily Log.")}</p></div></section>`;
     document.getElementById("syncFitnessButton").onclick=syncFitnessToSheet;
+    document.getElementById("personalWorkouts").onclick=showPersonalWorkouts;
     const selected = CURRENT_USER, date = getDateKey();
     app.querySelectorAll("[data-start-workout]").forEach(button=>button.onclick=()=>beginWorkout(plan[Number(button.dataset.startWorkout)]));
     document.getElementById("startReplacement").onclick=()=>{
