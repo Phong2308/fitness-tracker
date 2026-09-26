@@ -95,6 +95,7 @@ function saveBodyData(weight, food) {
 const WORKOUT_TYPES = { swimming: "🏊 Bơi", cycling: "🚴 Đạp xe", running: "🏃 Chạy bộ", calisthenics: "💪 Calisthenics" };
 
 function resolveWorkoutType(item) {
+    if(item.workoutId || item.personalWorkoutId) return 'calisthenics';
     const raw = normalizeText(item.type || item.activity || "").replace(/đ/g, "d");
     if (/calisthenics/.test(raw)) return "calisthenics";
     if (/boi|swim/.test(raw)) return "swimming";
@@ -106,7 +107,8 @@ function resolveWorkoutType(item) {
 function isPlannedWorkoutComplete(item, today) {
     const type = resolveWorkoutType(item);
     return Boolean(type && ownsCurrentUser(today) && today.date === getDateKey() &&
-        (today.workoutEntries || []).some(entry => entry.type === type && entry.completed === true));
+        (today.workoutEntries || []).some(entry => entry.type === type && entry.completed === true &&
+            (item.planKey ? entry.planKey===item.planKey : item.workoutId ? entry.workoutId===item.workoutId : true)));
 }
 
 function validateLibrary(rows) {
@@ -132,15 +134,16 @@ function builtInCalisthenics(item) {
 }
 
 async function loadSessionExercises(item) {
-    if (item.personalWorkoutId) {
+    const id=item.workoutId || item.personalWorkoutId;
+    if (id) {
         const userId=getCurrentUserId();
-        if (item.personalUserId!==userId) throw new Error("Bài tập không thuộc nhân vật hiện tại.");
+        if ((item.userId || item.personalUserId)!==userId) throw new Error("Bài tập không thuộc nhân vật hiện tại.");
         const result=await personalWorkoutRequest({action:'getPersonalWorkouts',userId});
         if(result.userId!==userId) throw new Error("Thư viện trả về sai nhân vật.");
-        const own=result.data.find(w=>w.id===item.personalWorkoutId);
+        const own=result.data.find(w=>w.id===id);
         if(!own) throw new Error("Không tìm thấy bài tập riêng.");
-        item.activity=own.name;item.target=new Set(own.rows.map(r=>r.round)).size+' vòng';item.restSeconds=own.restSeconds;
-        return {rows:validateLibrary(own.rows),fallback:false};
+        item.activity=own.name;item.workoutId=id;item.personalWorkoutId=id;item.restSeconds=own.restSeconds;
+        return {rows:expandLibraryForPlan(own.rows,item.target),fallback:false};
     }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -148,11 +151,20 @@ async function loadSessionExercises(item) {
         const response = await fetch(WEB_APP_URL + "?action=getWorkoutLibrary&workout=Calisthenics&_=" + Date.now(), {cache:"no-store", signal:controller.signal});
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.error || "Không tải được Workout Library.");
-        return {rows:validateLibrary(result.data), fallback:false};
+        return {rows:item.target ? expandLibraryForPlan(result.data,item.target) : validateLibrary(result.data), fallback:false};
     } catch (error) {
         console.error("Workout Library chưa sẵn sàng:", error);
         throw new Error("Không tải được Workout Library. Hãy kiểm tra API thư viện; không thay bằng bài cố định.");
     } finally { clearTimeout(timer); }
+}
+
+function expandLibraryForPlan(rows, target) {
+    const match=String(target || '').trim().match(/^(\d+)\s*vòng$/i);
+    const count=match?Number(match[1]):0;
+    if(!Number.isInteger(count)||count<1||count>100)throw new Error('Weekly Plan cần Mục tiêu dạng “3 vòng” (1–100 vòng).');
+    const first=Math.min(...rows.map(r=>Number(r.round)||1));
+    const base=rows.filter(r=>(Number(r.round)||1)===first).sort((a,b)=>Number(a.order)-Number(b.order));
+    return validateLibrary(Array.from({length:count},(_,i)=>base.map((r,j)=>({...r,round:i+1,order:j+1}))).flat());
 }
 
 function renderRoundWorkout(app, item, rows, fallback, active) {
@@ -211,7 +223,7 @@ function renderRoundWorkout(app, item, rows, fallback, active) {
         if (!active() || saved) return;
         try {
             const minutes = Math.max(0.1, Math.round((Date.now()-started)/6000)/10);
-            saveWorkoutEntry("calisthenics", minutes, rounds.length, (item.personalWorkoutId ? item.activity + ". " : "") + "Hoàn thành từng bài; thời gian bao gồm nghỉ giữa vòng.", item.personalWorkoutId ? item.target : undefined);
+            saveWorkoutEntry("calisthenics", minutes, rounds.length, (item.personalWorkoutId ? item.activity + ". " : "") + "Hoàn thành từng bài; thời gian bao gồm nghỉ giữa vòng.", item.target, item);
             saved = true;
             app.innerHTML = `<section class="card"><h2>✅ Hoàn thành bài tập</h2><p>${rounds.length} vòng · ${checked.size}/${rows.length} bài · ${minutes} phút (gồm thời gian nghỉ)</p><p>Đã lưu trên máy cho nhân vật hiện tại. Chưa đồng bộ Sheet.</p><button id="finishedHome" type="button">Về Home</button></section>`;
             document.getElementById("finishedHome").onclick = showHome;
@@ -236,6 +248,7 @@ async function beginWorkout(item) {
     app.innerHTML = '<section class="card"><p>Đang chuẩn bị bài tập…</p></section>';
     try {
         if (type === "calisthenics") {
+            if(item.userId && !item.workoutId)throw new Error('Dòng Calisthenics trong Weekly Plan thiếu Workout ID ở cột M.');
             const exercises = await loadSessionExercises(item);
             rows = exercises.rows;
             fallback = exercises.fallback;
@@ -267,7 +280,7 @@ async function beginWorkout(item) {
             try {
                 if (!active() || saved) throw new Error("Phiên tập đã kết thúc hoặc nhân vật/ngày đã đổi.");
                 if (checks.some(c=>!c.checked)) throw new Error("Hãy hoàn thành từng bài trước khi lưu.");
-                saveWorkoutEntry(type,form.elements.minutes.value,type === "calisthenics" ? rounds.length : form.elements.amount.value,type === "calisthenics" ? form.elements.note.value : "");
+                saveWorkoutEntry(type,form.elements.minutes.value,type === "calisthenics" ? rounds.length : form.elements.amount.value,type === "calisthenics" ? form.elements.note.value : "",item.target,item);
                 saved=true;
                 showHome();
             } catch(error) { document.getElementById("sessionError").textContent=error.message; }
@@ -318,7 +331,7 @@ function saveHabitValue(kind, value) {
     saveTodayData(today);
 }
 
-function saveWorkoutEntry(type, minutes, amount, note, targetOverride) {
+function saveWorkoutEntry(type, minutes, amount, note, targetOverride, source = {}) {
     if (!Object.hasOwn(WORKOUT_TYPES, type)) throw new Error("Hoạt động không hợp lệ.");
     const duration = Number(minutes), quantity = Number(amount);
     if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(quantity) || quantity <= 0) throw new Error("Thời gian và kết quả phải lớn hơn 0.");
@@ -327,7 +340,7 @@ function saveWorkoutEntry(type, minutes, amount, note, targetOverride) {
     const entry = { id: Date.now() + "-" + Math.random().toString(36).slice(2), type,
         minutes: duration, distance: type === "calisthenics" ? null : quantity,
         distanceUnit: type === "swimming" ? "m" : "km", rounds: type === "calisthenics" ? quantity : null,
-        note: String(note || ""), target: targetOverride ?? getTodayPlan().filter(item=>resolveWorkoutType(item) === type).map(item=>item.target).join("; "), completed: true, at: new Date().toISOString() };
+        note: String(note || ""), target: targetOverride ?? getTodayPlan().filter(item=>resolveWorkoutType(item) === type).map(item=>item.target).join("; "), workoutId:source.workoutId || source.personalWorkoutId || '',planKey:source.planKey || '',completed: true, at: new Date().toISOString() };
     today.workoutEntries = [...(today.workoutEntries || []), entry];
     today.completedDay = homeProgress(today, getTodayPlan()) === 100;
     saveTodayData(today);
@@ -382,6 +395,7 @@ function showHome() {
     app.querySelectorAll("[data-start-workout]").forEach(button=>button.onclick=()=>beginWorkout(plan[Number(button.dataset.startWorkout)]));
     document.getElementById("startReplacement").onclick=()=>{
         const type=document.getElementById("actualWorkoutType").value;
+        if(type==='calisthenics'){showPersonalWorkouts();return;}
         beginWorkout({type,activity:WORKOUT_TYPES[type]});
     };
     const guard = () => { if (CURRENT_USER !== selected || getDateKey() !== date) throw new Error("Nhân vật hoặc ngày đã đổi. Hãy tải lại trang."); };
@@ -809,12 +823,14 @@ function showUrlError() {
 // ============================================================
 
 async function loadWeeklyPlan() {
+    const selected=CURRENT_USER, userId=getCurrentUserId();
+    if(!userId){weeklyPlan=[];return;}
 
     try {
 
         const response = await fetch(
             WEB_APP_URL +
-            "?action=weeklyPlan&_=" + Date.now(),
+            "?action=weeklyPlan&userId=" + encodeURIComponent(userId) + "&_=" + Date.now(),
             { cache: "no-store" }
         );
 
@@ -834,6 +850,10 @@ async function loadWeeklyPlan() {
             );
         }
 
+        if(CURRENT_USER!==selected)return;
+        if(result.planSchemaVersion!==3 || result.userId!==userId || !Array.isArray(result.data))throw new Error('Cần triển khai backend lịch cá nhân mới (User ID + Workout ID).');
+        result.data=result.data.filter(item=>item.userId===userId);
+        CURRENT_USER.hasAssignedPlan=result.data.length>0;
         weeklyPlan =
             Array.isArray(result.data)
                 ? result.data
@@ -846,16 +866,9 @@ async function loadWeeklyPlan() {
 
     } catch (error) {
 
-        console.error(
-            "Weekly Plan error:",
-            error
-        );
-
+        if(CURRENT_USER!==selected)return;
         weeklyPlan = [];
-
-        alert(
-            "Không tải được Weekly Plan."
-        );
+        throw error;
 
     }
 
@@ -1065,10 +1078,11 @@ function normalizeDay(day) {
 // ============================================================
 
 function getTodayPlan() {
-    if (!getCurrentUserId() || CURRENT_USER.hasAssignedPlan !== true) return [];
+    if (!getCurrentUserId()) return [];
     const week = getCurrentWeek();
     const dayNo = getTodayDate().getDay() || 7;
     return weeklyPlan.filter(item =>
+        item.userId === getCurrentUserId() &&
         parseWeekNumber(item.week) === week &&
         (item.dayNo != null && item.dayNo !== ""
             ? Number(item.dayNo) === dayNo
@@ -3836,16 +3850,9 @@ async function selectUser(user){
     currentTargetRounds = 3;
     CURRENT_USER_PLAN = [];
     const selectedUser = CURRENT_USER;
+    weeklyPlan=[];
     try {
         await loadWeeklyPlan();
-        const response = await fetch(WEB_APP_URL + "?action=getProgress&userId=" + encodeURIComponent(userId) + "&_=" + Date.now(), {cache:"no-store"});
-        const result = await response.json();
-        if (CURRENT_USER !== selectedUser) return;
-        if (!response.ok || !result.success || !Array.isArray(result.data)) throw new Error(result.error || "Không đọc được User Progress để kiểm tra lịch đã gán.");
-        CURRENT_USER.hasAssignedPlan = result.data.some(row => {
-            const id = row.userId ?? row.User_ID ?? row["User ID"];
-            return String(id ?? "").trim() === userId;
-        });
     } catch (error) {
         if (CURRENT_USER !== selectedUser) return;
         alert("Không tải được lịch tập: " + error.message);
