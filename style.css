@@ -1,118 +1,172 @@
-* {
-    box-sizing: border-box;
-}
 
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    background: #f3f4f6;
-    color: #111827;
-}
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+        }
+        body.loading {
+            visibility: hidden;
+        }
+        body.app-ready {
+            visibility: visible;
+        }
+        body {
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+            background:
+                #f4f5f7;
+            color:
+                #111827;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        .app {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            padding:
+                24px 16px 60px;
+        }
+        .header {
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            margin: 0 0 8px;
+            font-size: 34px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 4px 0;
+            color:
+                #6b7280;
+            font-size: 17px;
+        }
+        .card {
+            background:
+                white;
+            border-radius:
+                20px;
+            padding:
+                24px;
+            margin-bottom:
+                20px;
+            box-shadow:
+                0 4px 18px
+                rgba(0,0,0,0.06);
+        }
 
-.app {
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 24px 16px 40px;
-}
+        .progress-bar {
+            width: 100%;
+            height: 13px;
+            background:
+                #e5e7eb;
+            border-radius:
+                20px;
+            overflow: hidden;
+            margin:
+                10px 0 14px;
+        }
+        .progress-bar > div {
+            height: 100%;
+            width: 0%;
+            background:
+                #111827;
+            border-radius:
+                20px;
+            transition:
+                width 0.3s ease;
+        }
 
-h1 {
-    margin: 0;
-    font-size: 30px;
-}
+        button {
+            width: 100%;
+            border: none;
+            border-radius:
+                14px;
+            padding:
+                14px 18px;
+            background:
+                #111827;
+            color:
+                white;
+            font-size:
+                17px;
+            font-weight:
+                600;
+            cursor:
+                pointer;
+        }
+        button:hover {
+            opacity:
+                0.9;
+        }
 
-.date {
-    color: #6b7280;
-    margin-top: 6px;
-    margin-bottom: 24px;
-}
+        label {
+            display:
+                block;
+            font-size:
+                15px;
+            color:
+                #374151;
+        }
+        input[type="number"] {
+            width:
+                100%;
+            margin-top:
+                8px;
+            padding:
+                13px;
+            border:
+                1px solid #d1d5db;
+            border-radius:
+                10px;
+            font-size:
+                16px;
+        }
 
-.card {
-    background: white;
-    border-radius: 18px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
+        @media (
+            max-width: 600px
+        ) {
+            .app {
+                padding:
+                    18px 12px 40px;
+            }
+            .header h1 {
+                font-size:
+                    30px;
+            }
+            .card {
+                padding:
+                    20px;
+                border-radius:
+                    18px;
+            }
 
-.card h2 {
-    margin-top: 0;
-    font-size: 20px;
-}
-
-.card p {
-    color: #6b7280;
-}
-
-button {
-    width: 100%;
-    margin-top: 12px;
-    padding: 14px;
-    border: none;
-    border-radius: 12px;
-    background: #111827;
-    color: white;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-button:active {
-    transform: scale(0.98);
-}
-
-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 0;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 16px;
-}
-
-label:last-child {
-    border-bottom: none;
-}
-
-input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-}
-.progress-box {
-    background: white;
-    border-radius: 18px;
-    padding: 18px;
-    margin-bottom: 16px;
-}
-
-.progress-text {
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 10px;
-    background: #e5e7eb;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-#progressFill {
-    width: 0%;
-    height: 100%;
-    background: #111827;
-    transition: width 0.2s ease;
-}
-
-#workout label {
-    cursor: pointer;
-}
-
-#workout label input {
-    flex-shrink: 0;
-}
-
-#workout label span {
-    line-height: 1.4;
-}
+        }
+      #app .profile-picker{max-width:440px;margin:clamp(16px,7vh,72px) auto;padding:32px;background:#fff;border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 12px 36px rgba(15,23,42,.06)}
+      #app .profile-mark{width:52px;height:52px;display:grid;place-items:center;background:#ecfdf5;border-radius:16px;font-size:26px;margin-bottom:20px}
+      #app .profile-brand{font-size:12px;letter-spacing:1.5px;color:#6b7280;font-weight:700;margin:0 0 10px}
+      #app .profile-picker h2{font-size:28px;margin:0 0 10px;letter-spacing:-.5px}
+      #app .profile-intro{font-size:15px;line-height:1.6;color:#6b7280;margin:0 0 24px}
+      #app .profile-label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}
+      #app #userDropdown{width:100%;min-height:50px;padding:12px 14px;border:1px solid #d1d5db;border-radius:12px;background:#f9fafb;color:#111827;font:inherit;font-size:16px;cursor:pointer}
+      #app #userDropdown:focus-visible,#app #createUserBtn:focus-visible{outline:3px solid #6ee7b7;outline-offset:3px}
+      #app .profile-divider{height:1px;background:#f0f1f3;margin:24px 0 18px}
+      #app #createUserBtn{display:inline-flex;align-items:center;justify-content:center;width:auto;max-width:100%;min-height:44px;padding:10px 16px;margin:0;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#111827;font-size:14px;font-weight:600;cursor:pointer}
+      #app #createUserBtn:hover{background:#f3f4f6}
+      #app .profile-note{font-size:12px;line-height:1.5;color:#6b7280;margin:18px 0 0}
+      @media(max-width:480px){#app .profile-picker{padding:24px;margin:16px auto}#app .profile-picker h2{font-size:26px}}
+      #app .new-profile{max-width:440px;margin:32px auto;padding:28px;background:white;border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 12px 36px #0f172a0f}
+      #app .new-profile h2{margin:0 0 12px;font-size:26px}#app .new-profile p{line-height:1.5;color:#64748b}
+      #app .new-profile label{display:flex;flex-direction:column;gap:8px;margin:16px 0;font-size:14px;font-weight:600}
+      #app .new-profile input,#app .new-profile select{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #d1d5db;border-radius:10px;background:white;font:inherit;font-size:16px}
+      #app .new-profile button{width:auto;margin:0;padding:11px 16px;border-radius:10px;font-size:14px;min-height:44px}
+      #app .new-profile .profile-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}#app .new-profile button:disabled{opacity:.6}
+      #app .new-profile .secondary{background:#f1f5f9;color:#334155}#app .new-profile [role=status]{overflow-wrap:anywhere}
+      @media(max-width:480px){#app .new-profile{padding:22px;margin:16px auto}}
+.habit-item{padding:16px 0;border-bottom:1px solid #e5e7eb}.habit-item:last-child{border-bottom:0}.habit-item h3{margin:0 0 10px;font-size:18px}.app form label{display:flex;flex-direction:column;gap:8px;margin:12px 0}.app form input,.app form select,.app form textarea{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #d1d5db;border-radius:10px;font:inherit;background:#fff;color:#111827}.app form [hidden]{display:none!important}.app .form-error{color:#b91c1c;margin:8px 0}.local-status{font-size:13px;line-height:1.5;color:#6b7280}.app details{padding:12px 0}.app .progress-bar{height:12px;overflow:hidden;border-radius:999px;background:#e5e7eb}.app article p{overflow-wrap:anywhere}@media(max-width:600px){.app{padding:20px 14px!important}.app .card{padding:20px!important;border-radius:20px!important}.app h1{font-size:30px!important}.app h2{font-size:20px!important}}
+.app button{width:auto;max-width:100%;min-height:40px;padding:9px 16px;margin-top:8px;border-radius:10px;font-size:14px;line-height:1.4}.app .replacement-workout{border-top:1px solid #e5e7eb;margin-top:16px;padding-top:16px}.app .replacement-workout h3{font-size:18px;margin:0 0 12px}.app .workout-actions{display:flex;flex-wrap:wrap;gap:8px}.app .replacement-workout input,.app .replacement-workout select,.app .replacement-workout textarea{padding:10px}.app .replacement-workout textarea{min-height:64px}
+.app .habit-target-line{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:12px 0;color:#64748b}.app .habit-target-line button[data-edit-target]{display:inline-flex;align-items:center;gap:5px;min-height:32px;margin:0;padding:5px 10px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:500;line-height:1.4;box-shadow:none}.app .habit-target-line button[data-edit-target]:hover{background:#eef2f6;border-color:#cbd5e1;color:#0f172a}.app button[data-edit-target]:focus-visible{outline:2px solid #64748b;outline-offset:3px}.app form[data-target-form]{padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:8px 0 14px}.app form[data-target-form][hidden]{display:none!important}.app form[data-target-form] label{margin-top:0;font-size:14px}
