@@ -68,18 +68,45 @@ async function syncFitnessToSheet() {
     }
 }
 const HABIT_TARGETS = { waterMl: null, sleepHours: null, steps: null };
+const habitTargetMessages = {};
+const habitTargetMemory = {};
+function cacheHabitTargets(userId, targets) {
+    habitTargetMemory[userId] = targets;
+    try { localStorage.setItem("fitness_targets_" + userId, JSON.stringify(targets)); } catch (_) {}
+}
+async function loadHabitTargetsFromSheet(userId) {
+    try {
+        const result = await personalWorkoutRequest({action:"getHabitTargets",userId});
+        if (!result.success || result.userId !== userId || !result.targets) throw new Error(result.error || "Phản hồi mục tiêu không hợp lệ.");
+        const saved = getHabitTargets(userId);
+        for (const kind of Object.keys(HABIT_TARGETS)) {
+            const value = result.targets[kind];
+            if (value !== null && (!Number.isFinite(value) || value <= 0)) throw new Error("Mục tiêu trên Sheet không hợp lệ.");
+            if (value !== null) saved[kind] = value;
+        }
+        cacheHabitTargets(userId, saved);
+        habitTargetMessages[userId] = "Đã tải mục tiêu từ User Master.";
+    } catch (error) {
+        habitTargetMessages[userId] = "Chưa tải được mục tiêu từ Sheet; đang dùng bản lưu trên máy nếu có. " + error.message;
+    }
+}
 function getHabitTargets(userId = getCurrentUserId()) {
-    const seeds = { P001:{waterMl:2000,sleepHours:8,steps:8000}, P002:{waterMl:1500,sleepHours:7,steps:6000} };
+    if (habitTargetMemory[userId]) return {...habitTargetMemory[userId]};
     try {
         const saved = JSON.parse(localStorage.getItem("fitness_targets_" + userId) || "null");
-        return {...HABIT_TARGETS,...(seeds[userId] || {}),...(saved || {})};
-    } catch (_) { return {...HABIT_TARGETS,...(seeds[userId] || {})}; }
+        return {...HABIT_TARGETS,...(saved || {})};
+    } catch (_) { return {...HABIT_TARGETS}; }
 }
-function saveHabitTarget(kind, value) {
+async function saveHabitTarget(kind, value) {
     requireCurrentUser();
+    const selected = CURRENT_USER, userId = getCurrentUserId();
     const n=Number(value), actual=kind === "waterMl" ? Math.round(n*1000) : n;
     if (!Object.hasOwn(HABIT_TARGETS,kind) || !Number.isFinite(actual) || actual<=0 || (kind === "steps" && !Number.isInteger(actual)) || (kind === "sleepHours" && actual>24)) throw new Error("Mục tiêu không hợp lệ.");
-    localStorage.setItem("fitness_targets_"+getCurrentUserId(),JSON.stringify({...getHabitTargets(),[kind]:actual}));
+    const result = await personalWorkoutRequest({action:"saveHabitTargets",userId,targets:{[kind]:actual}},true);
+    if (!result.success || result.userId !== userId || !result.targets || result.targets[kind] !== actual) throw new Error(result.error || "Sheet chưa xác nhận mục tiêu. Hãy thử lưu lại.");
+    cacheHabitTargets(userId,{...getHabitTargets(userId),...Object.fromEntries(Object.entries(result.targets).filter(([,v])=>v!==null))});
+    habitTargetMessages[userId] = "Đã lưu mục tiêu lên User Master.";
+    if (CURRENT_USER !== selected) return;
     const today=getTodayData();today.completedDay=homeProgress(today,getTodayPlan())===100;saveTodayData(today);
 }
 function saveBodyData(weight, food) {
@@ -373,12 +400,12 @@ function showHome() {
         <h3>${title}</h3><p class="habit-target-line"><span>Mục tiêu: ${displayTarget(kind)} ${unit}</span><button type="button" data-edit-target="${kind}"><span aria-hidden="true">✎</span> Sửa mục tiêu</button></p>
         <form data-target-form="${kind}" hidden><label>Mục tiêu (${unit})<input name="targetValue" type="number" min="${step}" step="${step}" value="${targets[kind]>0 ? displayTarget(kind) : ""}" required></label><button type="submit">Lưu mục tiêu</button><p role="alert"></p></form>
         <p>Thực tế: <strong>${kind === "waterMl" ? Number((habits[kind]/1000).toFixed(3)) : habits[kind]} ${unit}</strong> · ${targets[kind]>0 && habits[kind]>=targets[kind] ? "✅ Đạt" + (habits[kind]>targets[kind] ? " · Dư " + Number(((habits[kind]-targets[kind])/(kind==="waterMl"?1000:1)).toFixed(3)) + " " + unit : "") : "Chưa đạt"}</p>
-        <form data-habit="${kind}"><label>${kind === "waterMl" ? "Thêm nước (L)" : "Tổng hôm nay (" + unit + ")"}<input name="value" type="number" inputmode="decimal" min="${kind === "waterMl" ? 0.001 : 0}" step="${step}" ${kind === "sleepHours" ? 'max="24"' : ''} required></label>
+        <form data-habit="${kind}"><label>${kind === "waterMl" ? "Thêm nước (ml)" : "Tổng hôm nay (" + unit + ")"}<input name="value" type="number" inputmode="${kind === "waterMl" ? "numeric" : "decimal"}" min="${kind === "waterMl" ? 1 : 0}" step="${kind === "waterMl" ? 1 : step}" ${kind === "waterMl" ? 'placeholder="Ví dụ: 200"' : ''} ${kind === "sleepHours" ? 'max="24"' : ''} required></label>
         <button type="submit">${label}</button><p class="form-error" role="alert"></p></form></article>`;
     app.innerHTML = `<header class="header"><h1>Fitness Tracker</h1><p>${htmlText(getCurrentUserName())}</p><p>${new Date().toLocaleDateString("vi-VN",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"})}</p></header>
         <section class="card"><h2>🔥 Streak</h2><p>Chuỗi hiện tại: <strong>${calculateCurrentStreak()} ngày</strong></p><p>Kỷ lục cao nhất: <strong>${calculateBestStreak()} ngày</strong></p></section>
         <section class="card"><h2>📊 Tiến độ hôm nay</h2><div class="progress-bar" role="progressbar" aria-label="Tiến độ hôm nay" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div style="width:${percent}%;height:100%;background:#111827"></div></div><p><strong>${percent}% hoàn thành</strong></p></section>
-        <section class="card"><h2>📝 Thói quen hàng ngày</h2>
+        <section class="card"><h2>📝 Thói quen hàng ngày</h2><p role="status">${htmlText(habitTargetMessages[getCurrentUserId()] || "")}</p>
         ${habitCard("waterMl","💧 Uống nước","L","+ Nhập nước",0.001)}
         <details><summary>Lịch sử uống nước · ${Number((habits.waterMl/1000).toFixed(3))}/${displayTarget("waterMl")} L</summary>${habits.waterEntries.map(e=>`<p>${new Date(e.at).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})} +${Number((e.amountMl/1000).toFixed(3))} L</p>`).join("") || '<p>Chưa có lần nhập nào.</p>'}</details>
         ${habitCard("sleepHours","💤 Giấc ngủ","giờ","Nhập giờ ngủ",0.1)}
@@ -400,12 +427,12 @@ function showHome() {
     };
     const guard = () => { if (CURRENT_USER !== selected || getDateKey() !== date) throw new Error("Nhân vật hoặc ngày đã đổi. Hãy tải lại trang."); };
     app.querySelectorAll("[data-edit-target]").forEach(button=>button.onclick=()=>{const form=app.querySelector('[data-target-form="'+button.dataset.editTarget+'"]');form.hidden=!form.hidden;});
-    app.querySelectorAll("[data-target-form]").forEach(form=>form.onsubmit=event=>{event.preventDefault();try{guard();saveHabitTarget(form.dataset.targetForm,form.elements.targetValue.value);showHome();}catch(error){form.querySelector('[role="alert"]').textContent=error.message;}});
+    app.querySelectorAll("[data-target-form]").forEach(form=>form.onsubmit=async event=>{event.preventDefault();const button=form.querySelector('button[type="submit"]');if(button.disabled)return;button.disabled=true;form.querySelector('[role="alert"]').textContent="Đang lưu lên Sheet…";try{guard();await saveHabitTarget(form.dataset.targetForm,form.elements.targetValue.value);guard();showHome();}catch(error){form.querySelector('[role="alert"]').textContent="Chưa lưu: "+error.message;}finally{button.disabled=false;}});
     document.getElementById("bodyForm").onsubmit=event=>{event.preventDefault();try{guard();saveBodyData(event.currentTarget.elements.weight.value,null);showHome();}catch(error){event.currentTarget.querySelector('[role="alert"]').textContent=error.message;}};
     document.getElementById("foodControlled").onchange=event=>{guard();saveBodyData(null,event.target.checked);};
     app.querySelectorAll("[data-habit]").forEach(form => form.addEventListener("submit", event => {
         event.preventDefault();
-        try { guard(); const value = form.elements.value.value; saveHabitValue(form.dataset.habit, form.dataset.habit === "waterMl" && value.trim() !== "" ? Math.round(Number(value)*1000) : value); showHome(); }
+        try { guard(); const value = form.elements.value.value; saveHabitValue(form.dataset.habit, value); showHome(); }
         catch (error) { form.querySelector(".form-error").textContent = error.message; }
     }));
 }
@@ -571,6 +598,52 @@ async function showUserSelector(){
 
 
 }
+function showCreateUser() {
+    const app=document.getElementById('app');
+    if(!app)return;
+    if(app.stopWorkoutTimer)app.stopWorkoutTimer();
+    const token={};app.workoutToken=token;
+    let requestId='',previousSignature='',busy=false;
+    app.innerHTML=`<style>
+      #app .new-profile{max-width:440px;margin:32px auto;padding:28px;background:white;border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 12px 36px #0f172a0f}
+      #app .new-profile h2{margin:0 0 12px;font-size:26px}#app .new-profile p{line-height:1.5;color:#64748b}
+      #app .new-profile label{display:flex;flex-direction:column;gap:8px;margin:16px 0;font-size:14px;font-weight:600}
+      #app .new-profile input,#app .new-profile select{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #d1d5db;border-radius:10px;background:white;font:inherit;font-size:16px}
+      #app .new-profile button{width:auto;margin:0;padding:11px 16px;border-radius:10px;font-size:14px;min-height:44px}
+      #app .new-profile .profile-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}#app .new-profile button:disabled{opacity:.6}
+      #app .new-profile .secondary{background:#f1f5f9;color:#334155}#app .new-profile [role=status]{overflow-wrap:anywhere}
+      @media(max-width:480px){#app .new-profile{padding:22px;margin:16px auto}}
+    </style><section class="new-profile"><h2>➕ Tạo nhân vật mới</h2><p>User ID tự tăng: P003, P004… Bạn không cần nhập mã.</p>
+    <form id="createProfileForm"><label>Tên nhân vật<input name="userName" maxlength="100" autocomplete="nickname" required></label>
+    <label>Icon<select name="avatar"><option>💪</option><option>🏃</option><option>🏋️</option><option>🏊</option><option>🚴</option><option>🧘</option><option>⭐</option><option>🐼</option></select></label>
+    <label>Chiều cao (cm)<input name="height" type="number" min="0.1" max="300" step="0.1" inputmode="decimal" required></label>
+    <label>Cân nặng hiện tại (kg)<input name="weight" type="number" min="0.1" max="500" step="0.1" inputmode="decimal" required></label>
+    <div class="profile-actions"><button id="saveNewProfile" type="submit">Lưu nhân vật</button><button id="cancelNewProfile" type="button" class="secondary">Quay lại</button></div><p id="createProfileStatus" role="status" aria-live="polite"></p></form></section>`;
+    const form=document.getElementById('createProfileForm'),status=document.getElementById('createProfileStatus');
+    const active=()=>app.workoutToken===token && document.getElementById('createProfileForm')===form;
+    document.getElementById('cancelNewProfile').onclick=()=>{if(!busy){app.workoutToken=null;showUserSelector();}};
+    form.onsubmit=async event=>{
+        event.preventDefault();if(busy || !active())return;
+        const data={userName:form.elements.userName.value.trim(),avatar:form.elements.avatar.value,height:Number(form.elements.height.value),weight:Number(form.elements.weight.value)};
+        if(!data.userName || data.userName.length>100 || !Number.isFinite(data.height) || data.height<=0 || data.height>300 || !Number.isFinite(data.weight) || data.weight<=0 || data.weight>500){status.textContent='Hãy nhập tên, chiều cao và cân nặng hợp lệ.';return;}
+        const signature=JSON.stringify(data);
+        if(signature!==previousSignature){requestId=crypto.randomUUID();previousSignature=signature;}
+        busy=true;[...form.elements].forEach(el=>el.disabled=true);status.textContent='Đang lưu vào User Master…';
+        try {
+            const result=await personalWorkoutRequest({action:'createUser',requestId,...data},true);
+            if(result.requestId!==requestId || !/^P\d{3,}$/.test(result.data?.userId || '') || result.data.userName!==data.userName)throw new Error('Chưa xác nhận đúng nhân vật. Kiểm tra User Master và phiên bản Apps Script.');
+            if(!active())return;
+            form.innerHTML=`<p role="status">✅ Đã tạo <strong>${htmlText(result.data.userId)} · ${htmlText(result.data.avatar)} ${htmlText(result.data.userName)}</strong> trong User Master.</p><p>Nhân vật mới chưa có lịch hoặc kết quả tập. Không sao chép dữ liệu người khác.</p><button id="newProfileDone" type="button">Về chọn nhân vật</button>`;
+            document.getElementById('newProfileDone').onclick=()=>{app.workoutToken=null;showUserSelector();};
+        } catch(error) {
+            if(active()){
+                status.textContent=error.name==='AbortError'?'Chưa nhận được xác nhận. Có thể bấm Lưu lại với cùng thông tin; backend mới sẽ không tạo trùng.':'Chưa xác nhận lưu: '+error.message;
+                [...form.elements].forEach(el=>el.disabled=false);
+            }
+        } finally {busy=false;}
+    };
+}
+
 function ownsCurrentUser(row) {
     const id = getCurrentUserId();
     if (!id || !row) return false;
@@ -3851,6 +3924,8 @@ async function selectUser(user){
     CURRENT_USER_PLAN = [];
     const selectedUser = CURRENT_USER;
     weeklyPlan=[];
+    await loadHabitTargetsFromSheet(userId);
+    if (CURRENT_USER !== selectedUser) return;
     try {
         await loadWeeklyPlan();
     } catch (error) {
