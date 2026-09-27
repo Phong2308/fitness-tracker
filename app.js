@@ -441,7 +441,7 @@ function showHome() {
 // FITNESS TRACKER - APP.JS
 // ============================================================
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxAyqJEJXcwqI35taptXmhtd315b0ppGGHYG3c79KIVNX64USazYxANYgZ2B8sad3hVSw/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw4lFK8czJKh-cVY-bK4nLjCvYTMh-La05fPjvVdr4Tfse01IojG_Wk-it_YYa1k4JpjA/exec";
 
 const PLAN_START_DATE = "2026-09-21";
 
