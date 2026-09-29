@@ -40,3 +40,37 @@ function saveTodayData(data) {
   all[key] = data;
   saveLocalData(all);
 }
+
+const dailyRestoreMessages = {};
+async function restoreTodayHabits() {
+  const selected = CURRENT_USER, userId = getCurrentUserId(), date = getDateKey();
+  try {
+    const result = await personalWorkoutRequest({action: "getDailyLog", userId, date});
+    if (CURRENT_USER !== selected || getDateKey() !== date) return;
+    if (result.dailyReadVersion !== 2 || result.userId !== userId || !Array.isArray(result.data)) {
+      throw new Error("Cần cập nhật hàm getDailyLog trong Apps Script.");
+    }
+    if (result.data.some(row => row.userId !== userId || row.date !== date) || result.data.length > 1) {
+      throw new Error("Daily Log sai người/ngày hoặc có dòng trùng; chưa nhập vào máy.");
+    }
+    const row = result.data[0];
+    if (row) {
+      const today = getTodayData();
+      const habits = {...habitState(today)};
+      for (const [key, raw, factor] of [["waterMl", row.water, 1000], ["sleepHours", row.sleep, 1], ["steps", row.steps, 1]]) {
+        if (raw === "" || raw == null) continue;
+        const value = Number(raw) * factor;
+        if (!Number.isFinite(value) || value < 0 || (key === "steps" && !Number.isInteger(value)) || (key === "sleepHours" && value > 24)) {
+          throw new Error("Dữ liệu thói quen trên Sheet không hợp lệ.");
+        }
+        // Never replace a local edit, including an intentional zero, with a remote snapshot.
+        if (!today.habitEdited?.[key] && !(today.habits?.[key] > 0)) habits[key] = key === "waterMl" ? Math.round(value) : value;
+      }
+      today.habits = habits;
+      saveTodayData(today);
+    }
+    dailyRestoreMessages[userId] = "Đã kiểm tra dữ liệu hôm nay trên Sheet; giữ nguyên dữ liệu đang có trên máy.";
+  } catch (error) {
+    if (CURRENT_USER === selected) dailyRestoreMessages[userId] = "Chưa khôi phục từ Sheet: " + error.message + " Dữ liệu trên máy được giữ nguyên.";
+  }
+}
