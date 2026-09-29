@@ -2,6 +2,16 @@
 
 // home — extracted from the working app; public function names preserved.
 
+function refreshHomeAfterLoad() {
+  const status = document.getElementById("homeLoadStatus");
+  if (!status) return;
+  const app = document.querySelector(".app");
+  const editing = app.dataset.draft === "true" || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "");
+  if (editing) {
+    status.textContent = "Dữ liệu đã tải. Giữ nguyên nội dung bạn đang nhập.";
+    document.getElementById("applyHomeRefresh").hidden = false;
+  } else showHome();
+}
 function showHome() {
   if (!getCurrentUserId()) return showUserSelector();
   const app = document.querySelector(".app");
@@ -13,6 +23,8 @@ function showHome() {
     plan = getTodayPlan();
   const percent = homeProgress(today, plan);
   const targets = getHabitTargets();
+  const load = homeLoadState[getCurrentUserId()];
+  app.dataset.draft = "false";
   const displayTarget = kind => targets[kind] > 0 ? kind === "waterMl" ? targets[kind] / 1000 : targets[kind] : "Chưa đặt";
   const habitCard = (kind, title, unit, label, step) => `<article class="habit-item">
         <h3>${title}</h3><p class="habit-target-line"><span>Mục tiêu: ${displayTarget(kind)} ${unit}</span><button type="button" data-edit-target="${kind}"><span aria-hidden="true">✎</span> Sửa mục tiêu</button></p>
@@ -44,6 +56,25 @@ function showHome() {
         ${(today.workoutEntries || []).map(e => `<p>✅ ${WORKOUT_TYPES[e.type]} · ${e.minutes} phút · ${e.rounds === null ? e.distance + " " + e.distanceUnit : e.rounds + " vòng"}${e.note ? " · " + htmlText(e.note) : ""}</p>`).join("")}
         <p class="local-status">${pendingFitnessDays(getCurrentUserId()).length ? "Có dữ liệu trên máy chưa đồng bộ." : "Dữ liệu đã gửi sẽ được giữ lại trên máy."}</p><button id="syncFitnessButton" type="button" ${fitnessSyncBusy ? "disabled" : ""}>${fitnessSyncBusy ? "Đang đồng bộ…" : "Đồng bộ Google Sheet"}</button><p role="status" class="local-status">${htmlText(fitnessSyncMessages[getCurrentUserId()] || "Đồng bộ thói quen, cơ thể và tổng kết workout vào Daily Log.")}</p></div></section>`;
   document.getElementById("syncFitnessButton").onclick = syncFitnessToSheet;
+  const banner = document.createElement("section");
+  banner.className = "card";
+  banner.innerHTML = `<p id="homeLoadStatus" role="status">${htmlText(load?.message || "Đang dùng dữ liệu đã lưu trên máy.")}</p><button id="applyHomeRefresh" type="button" hidden>Cập nhật giao diện</button>${today.dailyFeeling ? "" : '<div id="dailyFeeling"><p>Hôm nay bạn thấy thế nào?</p><button type="button" data-feeling="good">😊 Khỏe</button> <button type="button" data-feeling="normal">😐 Bình thường</button> <button type="button" data-feeling="tired">😴 Mệt</button> <button type="button" data-feeling="skip">Bỏ qua</button><p role="alert"></p></div>'}`;
+  app.querySelector("header").after(banner);
+  document.getElementById("applyHomeRefresh").onclick = () => {
+    if (app.dataset.draft === "true" && !confirm("Bạn còn nội dung chưa lưu. Bỏ nội dung đang nhập để cập nhật giao diện?")) return;
+    showHome();
+  };
+  banner.querySelectorAll("[data-feeling]").forEach(button => button.onclick = () => {
+    try { guard(); saveDailyFeeling(button.dataset.feeling); document.getElementById("dailyFeeling").remove(); }
+    catch(error) { banner.querySelector('[role="alert"]').textContent = error.message; }
+  });
+  app.oninput = () => { app.dataset.draft = "true"; };
+  if (load && !load.planReady) {
+    const section = document.getElementById("startReplacement").closest("section");
+    const notice = document.createElement("p");
+    notice.textContent = load.loading ? "Đang tải lịch tập. Bài theo lịch sẽ xuất hiện khi tải xong." : "Lịch tập chưa sẵn sàng; tải lại để thử kết nối.";
+    section.querySelector("h2").after(notice);
+  }
   document.getElementById("personalWorkouts").onclick = showPersonalWorkouts;
   const selected = CURRENT_USER,
     date = getDateKey();

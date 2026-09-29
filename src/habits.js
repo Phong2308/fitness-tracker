@@ -53,3 +53,10 @@ function saveHabitValue(kind, value) {
   updateDayCompletion(today);
   saveTodayData(today);
 }
+function saveDailyFeeling(value) {
+  if (!["good", "normal", "tired", "skip"].includes(value)) throw new Error("Lựa chọn không hợp lệ.");
+  const today = getTodayData();
+  if (today.dailyFeeling) return;
+  today.dailyFeeling = {value, at:new Date().toISOString()};
+  saveTodayData(today);
+}

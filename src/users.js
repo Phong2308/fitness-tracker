@@ -159,18 +159,21 @@ async function selectUser(user) {
   };
   const selectedUser = CURRENT_USER;
   weeklyPlan = [];
-  await loadHabitTargetsFromSheet(userId);
-  if (CURRENT_USER !== selectedUser) return;
-  await restoreTodayHabits();
-  if (CURRENT_USER !== selectedUser) return;
-  await loadStreakHistory();
-  if (CURRENT_USER !== selectedUser) return;
-  try {
-    await loadWeeklyPlan();
-  } catch (error) {
-    if (CURRENT_USER !== selectedUser) return;
-    alert("Không tải được lịch tập: " + error.message);
-  }
-  if (CURRENT_USER !== selectedUser) return;
+  homeLoadState[userId] = {loading:true, planReady:false, message:"Đang cập nhật từ Sheet… Bạn có thể nhập thói quen ngay."};
   showHome();
+  await Promise.allSettled([
+    loadHabitTargetsFromSheet(userId), restoreTodayHabits(), loadStreakHistory(),
+    loadWeeklyPlan().then(() => {
+      if(CURRENT_USER === selectedUser) homeLoadState[userId].planReady = true;
+    }).catch(error => {
+      if(CURRENT_USER === selectedUser) homeLoadState[userId].error = "Chưa tải được lịch tập: " + error.message;
+    })
+  ]);
+  if (CURRENT_USER !== selectedUser) return;
+  homeLoadState[userId].loading = false;
+  const today = getTodayData();
+  updateDayCompletion(today);
+  saveTodayData(today);
+  homeLoadState[userId].message = homeLoadState[userId].error || "Đã hoàn tất lượt tải. Xem trạng thái từng phần nếu mạng có lỗi.";
+  refreshHomeAfterLoad();
 }

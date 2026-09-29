@@ -8,6 +8,7 @@ const HABIT_TARGETS = {
 };
 const habitTargetMessages = {};
 const habitTargetMemory = {};
+const habitTargetRevision = {};
 function cacheHabitTargets(userId, targets) {
   habitTargetMemory[userId] = targets;
   try {
@@ -15,12 +16,14 @@ function cacheHabitTargets(userId, targets) {
   } catch (_) {}
 }
 async function loadHabitTargetsFromSheet(userId) {
+  const revision = habitTargetRevision[userId] || 0;
   try {
     const result = await personalWorkoutRequest({
       action: "getHabitTargets",
       userId
     });
     if (!result.success || result.userId !== userId || !result.targets) throw new Error(result.error || "Phản hồi mục tiêu không hợp lệ.");
+    if ((habitTargetRevision[userId] || 0) !== revision) return;
     const saved = getHabitTargets(userId);
     for (const kind of Object.keys(HABIT_TARGETS)) {
       const value = result.targets[kind];
@@ -56,6 +59,7 @@ async function saveHabitTarget(kind, value) {
   const n = Number(value),
     actual = kind === "waterMl" ? Math.round(n * 1000) : n;
   if (!Object.hasOwn(HABIT_TARGETS, kind) || !Number.isFinite(actual) || actual <= 0 || kind === "steps" && !Number.isInteger(actual) || kind === "sleepHours" && actual > 24) throw new Error("Mục tiêu không hợp lệ.");
+  habitTargetRevision[userId] = (habitTargetRevision[userId] || 0) + 1;
   const result = await personalWorkoutRequest({
     action: "saveHabitTargets",
     userId,

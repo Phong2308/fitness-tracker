@@ -75,5 +75,6 @@ async function syncCompletedDays(userId) {
 
 function updateDayCompletion(today) {
     // Once earned, retain completion even if targets later change.
-    today.completedDay = today.completedDay === true || homeProgress(today, getTodayPlan()) === 100;
+    const state = homeLoadState[getCurrentUserId()];
+    today.completedDay = today.completedDay === true || ((!state || state.planReady) && homeProgress(today, getTodayPlan()) === 100);
 }
