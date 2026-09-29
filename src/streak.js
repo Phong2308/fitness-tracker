@@ -35,11 +35,42 @@ function calculateStreakStats(all, userId, todayKey, pauseOnMissedDays = STREAK_
 }
 
 function calculateCurrentStreak() {
-    return calculateStreakStats(loadLocalData(), getCurrentUserId(), getDateKey()).current;
+    return closedDayStreakStats().current;
 }
 
 function calculateBestStreak() {
-    return calculateStreakStats(loadLocalData(), getCurrentUserId(), getDateKey()).best;
+    return closedDayStreakStats().best;
+}
+
+const streakMessages = {};
+function closedDayStreakStats() {
+    const yesterday = getTodayDate(); yesterday.setDate(yesterday.getDate()-1);
+    return calculateStreakStats(loadLocalData(), getCurrentUserId(), getDateKey(yesterday));
+}
+async function loadStreakHistory() {
+    const selected=CURRENT_USER, userId=getCurrentUserId();
+    try {
+        const result=await personalWorkoutRequest({action:"getStreakHistory",userId});
+        if(CURRENT_USER!==selected)return;
+        if(result.streakVersion!==1 || result.userId!==userId || !Array.isArray(result.data))throw new Error("Phản hồi streak không hợp lệ.");
+        const all=loadLocalData(), seen=new Set();
+        for(const row of result.data){
+            const parsed=new Date(row.date+"T00:00:00Z");
+            if(row.userId!==userId || !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0,10)!==row.date || typeof row.completedDay!=="boolean" || seen.has(row.date))throw new Error("Lịch sử streak sai người/ngày hoặc trùng ngày.");
+            seen.add(row.date);
+            const key=userId+"_"+row.date, old=all[key];
+            if(old && (old.userId!==userId || old.date!==row.date))throw new Error("Lịch sử trên máy không khớp; chưa thay đổi.");
+            all[key]={...(old || {userId,date:row.date}),completedDay:old?.completedDay===true || row.completedDay};
+        }
+        saveLocalData(all);
+        streakMessages[userId]="Đã tải lịch sử ngày đạt từ Sheet. Chỉ tính đến hết hôm qua.";
+    } catch(error){if(CURRENT_USER===selected)streakMessages[userId]="Đang dùng lịch sử trên máy. Chưa tải được streak: "+error.message;}
+}
+async function syncCompletedDays(userId) {
+    const dates=Object.entries(loadLocalData()).filter(([key,day])=>day && day.userId===userId && key===userId+"_"+day.date && day.completedDay===true && day.date<=getDateKey()).map(([,day])=>day.date);
+    const result=await personalWorkoutRequest({action:"syncStreakDays",userId,dates},true);
+    if(result.streakVersion!==1 || result.userId!==userId || !Array.isArray(result.acceptedDates) || dates.some(date=>!result.acceptedDates.includes(date)))throw new Error("Chưa xác nhận lưu đủ các ngày đạt.");
+    streakMessages[userId]="Đã lưu ngày đạt lên Sheet; ngày hôm nay sẽ được tính từ ngày mai.";
 }
 
 function updateDayCompletion(today) {

@@ -161,6 +161,10 @@ async function selectUser(user) {
   weeklyPlan = [];
   await loadHabitTargetsFromSheet(userId);
   if (CURRENT_USER !== selectedUser) return;
+  await restoreTodayHabits();
+  if (CURRENT_USER !== selectedUser) return;
+  await loadStreakHistory();
+  if (CURRENT_USER !== selectedUser) return;
   try {
     await loadWeeklyPlan();
   } catch (error) {

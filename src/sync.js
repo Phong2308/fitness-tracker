@@ -40,11 +40,6 @@ async function syncFitnessToSheet() {
   const selected = CURRENT_USER,
     userId = getCurrentUserId();
   const pending = pendingFitnessDays(userId);
-  if (!pending.length) {
-    fitnessSyncMessages[userId] = "Không có dữ liệu mới cần gửi.";
-    showHome();
-    return;
-  }
   fitnessSyncBusy = true;
   fitnessSyncMessages[userId] = "Đang gửi dữ liệu…";
   showHome();
@@ -84,7 +79,9 @@ async function syncFitnessToSheet() {
       }
       count++;
     }
-    fitnessSyncMessages[userId] = "Đã đồng bộ " + count + " ngày lên Google Sheet.";
+    if (CURRENT_USER !== selected) throw new Error("Đã đổi nhân vật; chưa đồng bộ streak.");
+    await syncCompletedDays(userId);
+    fitnessSyncMessages[userId] = "Đã đồng bộ " + count + " ngày và cập nhật ngày đạt lên Google Sheet.";
   } catch (error) {
     fitnessSyncMessages[userId] = "Đã gửi " + count + " ngày. Chưa đồng bộ hết: " + (error.name === "AbortError" ? "Kết nối quá lâu. Có thể bấm gửi lại; mã workout giúp chống trùng." : error.message);
   } finally {
@@ -92,4 +89,3 @@ async function syncFitnessToSheet() {
     if (CURRENT_USER === selected) showHome();
   }
 }
-

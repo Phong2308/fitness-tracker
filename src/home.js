@@ -26,9 +26,10 @@ function showHome() {
     month: "2-digit",
     year: "numeric"
   })}</p></header>
-        <section class="card" id="streakCard"><h2>🔥 Streak</h2><p>${STREAK_PAUSE_ON_MISSED_DAYS ? "Số ngày đạt tích lũy" : "Chuỗi hiện tại"}: <strong>${calculateCurrentStreak()} ngày</strong></p><p>Kỷ lục liên tiếp: <strong>${calculateBestStreak()} ngày</strong></p>${STREAK_PAUSE_ON_MISSED_DAYS ? '<p class="local-status">Chế độ thử: giữ số ngày đã đạt, không reset khi bỏ ngày hoặc đổi nhân vật.</p>' : ''}<p class="local-status">Tính theo lịch sử lưu trên trình duyệt này.</p></section>
+        <section class="card" id="streakCard"><h2>🔥 Streak</h2><p>${STREAK_PAUSE_ON_MISSED_DAYS ? "Số ngày đạt tích lũy" : "Chuỗi hiện tại"}: <strong>${calculateCurrentStreak()} ngày</strong></p><p>Kỷ lục liên tiếp: <strong>${calculateBestStreak()} ngày</strong></p>${STREAK_PAUSE_ON_MISSED_DAYS ? '<p class="local-status">Chế độ thử: giữ số ngày đã đạt, không reset khi bỏ ngày hoặc đổi nhân vật.</p>' : ''}<p class="local-status">${htmlText(streakMessages[getCurrentUserId()] || "Tính riêng theo nhân vật, đến hết hôm qua. Bấm Đồng bộ để lưu ngày đạt lên Sheet.")}</p></section>
         <section class="card"><h2>📊 Tiến độ hôm nay</h2><div class="progress-bar" role="progressbar" aria-label="Tiến độ hôm nay" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div style="width:${percent}%;height:100%;background:#111827"></div></div><p><strong>${percent}% hoàn thành</strong></p></section>
         <section class="card"><h2>📝 Thói quen hàng ngày</h2><p role="status">${htmlText(habitTargetMessages[getCurrentUserId()] || "")}</p>
+        <p role="status">${htmlText(dailyRestoreMessages[getCurrentUserId()] || "")}</p>
         ${habitCard("waterMl", "💧 Uống nước", "L", "+ Nhập nước", 0.001)}
         <details><summary>Lịch sử uống nước · ${Number((habits.waterMl / 1000).toFixed(3))}/${displayTarget("waterMl")} L</summary>${habits.waterEntries.map(e => `<p>${new Date(e.at).toLocaleTimeString("vi-VN", {
     hour: "2-digit",
