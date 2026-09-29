@@ -8,6 +8,8 @@ function refreshHomeAfterLoad() {
   const app = document.querySelector(".app");
   const editing = app.dataset.draft === "true" || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "");
   if (editing) {
+    status.hidden = false;
+    status.parentElement.hidden = false;
     status.textContent = "Dữ liệu đã tải. Giữ nguyên nội dung bạn đang nhập.";
     document.getElementById("applyHomeRefresh").hidden = false;
   } else showHome();
@@ -38,7 +40,7 @@ function showHome() {
     month: "2-digit",
     year: "numeric"
   })}</p></header>
-        <section class="card" id="streakCard"><h2>🔥 Streak</h2><p>${STREAK_PAUSE_ON_MISSED_DAYS ? "Số ngày đạt tích lũy" : "Chuỗi hiện tại"}: <strong>${calculateCurrentStreak()} ngày</strong></p><p>Kỷ lục liên tiếp: <strong>${calculateBestStreak()} ngày</strong></p>${STREAK_PAUSE_ON_MISSED_DAYS ? '<p class="local-status">Chế độ thử: giữ số ngày đã đạt, không reset khi bỏ ngày hoặc đổi nhân vật.</p>' : ''}<p class="local-status">${htmlText(streakMessages[getCurrentUserId()] || "Tính riêng theo nhân vật, đến hết hôm qua. Bấm Đồng bộ để lưu ngày đạt lên Sheet.")}</p></section>
+        <section class="card" id="streakCard"><h2>🔥 Streak</h2><p>${STREAK_PAUSE_ON_MISSED_DAYS ? "Số ngày đạt tích lũy" : "Chuỗi hiện tại"}: <strong>${calculateCurrentStreak()} ngày</strong></p><p>Kỷ lục liên tiếp: <strong>${calculateBestStreak()} ngày</strong></p>${streakMessages[getCurrentUserId()]?.includes("Chưa tải được") ? `<p role="alert" class="local-status">${htmlText(streakMessages[getCurrentUserId()])}</p>` : ""}</section>
         <section class="card"><h2>📊 Tiến độ hôm nay</h2><div class="progress-bar" role="progressbar" aria-label="Tiến độ hôm nay" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><div style="width:${percent}%;height:100%;background:#111827"></div></div><p><strong>${percent}% hoàn thành</strong></p></section>
         <section class="card"><h2>📝 Thói quen hàng ngày</h2>${habitTargetMessages[getCurrentUserId()]?.startsWith("Chưa") ? `<p role="alert">${htmlText(habitTargetMessages[getCurrentUserId()])}</p>` : ""}
         ${dailyRestoreMessages[getCurrentUserId()]?.startsWith("Chưa") ? `<p role="alert">${htmlText(dailyRestoreMessages[getCurrentUserId()])}</p>` : ""}
@@ -60,12 +62,18 @@ function showHome() {
   banner.className = "card";
   banner.innerHTML = `<p id="homeLoadStatus" role="status">${htmlText(load?.message || "Đang dùng dữ liệu đã lưu trên máy.")}</p><button id="applyHomeRefresh" type="button" hidden>Cập nhật giao diện</button>${today.dailyFeeling ? "" : '<div id="dailyFeeling"><p>Hôm nay bạn thấy thế nào?</p><button type="button" data-feeling="good">😊 Khỏe</button> <button type="button" data-feeling="normal">😐 Bình thường</button> <button type="button" data-feeling="tired">😴 Mệt</button> <button type="button" data-feeling="skip">Bỏ qua</button><p role="alert"></p></div>'}`;
   app.querySelector("header").after(banner);
+  const showLoadStatus = Boolean(load?.loading || load?.error);
+  document.getElementById("homeLoadStatus").hidden = !showLoadStatus;
+  banner.hidden = !showLoadStatus && Boolean(today.dailyFeeling);
   document.getElementById("applyHomeRefresh").onclick = () => {
     if (app.dataset.draft === "true" && !confirm("Bạn còn nội dung chưa lưu. Bỏ nội dung đang nhập để cập nhật giao diện?")) return;
     showHome();
   };
   banner.querySelectorAll("[data-feeling]").forEach(button => button.onclick = () => {
-    try { guard(); saveDailyFeeling(button.dataset.feeling); document.getElementById("dailyFeeling").remove(); }
+    try {
+      guard(); saveDailyFeeling(button.dataset.feeling); document.getElementById("dailyFeeling").remove();
+      banner.hidden = document.getElementById("homeLoadStatus").hidden && document.getElementById("applyHomeRefresh").hidden;
+    }
     catch(error) { banner.querySelector('[role="alert"]').textContent = error.message; }
   });
   app.oninput = () => { app.dataset.draft = "true"; };
