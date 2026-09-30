@@ -58,6 +58,11 @@ function showHome() {
         ${(today.workoutEntries || []).map(e => `<p>✅ ${WORKOUT_TYPES[e.type]} · ${e.minutes} phút · ${e.rounds === null ? e.distance + " " + e.distanceUnit : e.rounds + " vòng"}${e.note ? " · " + htmlText(e.note) : ""}</p>`).join("")}
         <p class="local-status">${pendingFitnessDays(getCurrentUserId()).length ? "Có dữ liệu trên máy chưa đồng bộ." : "Dữ liệu đã gửi sẽ được giữ lại trên máy."}</p><button id="syncFitnessButton" type="button" ${fitnessSyncBusy ? "disabled" : ""}>${fitnessSyncBusy ? "Đang đồng bộ…" : "Đồng bộ Google Sheet"}</button><p role="status" class="local-status">${htmlText(fitnessSyncMessages[getCurrentUserId()] || "Đồng bộ thói quen, cơ thể và tổng kết workout vào Daily Log.")}</p></div></section>`;
   document.getElementById("syncFitnessButton").onclick = syncFitnessToSheet;
+  const scheduleButton = document.createElement('button');
+  scheduleButton.type = 'button';
+  scheduleButton.textContent = 'Tạo lịch tuần sau';
+  scheduleButton.onclick = showNextWeekSchedule;
+  document.getElementById('syncFitnessButton').after(scheduleButton);
   const banner = document.createElement("section");
   banner.className = "card";
   banner.innerHTML = `<p id="homeLoadStatus" role="status">${htmlText(load?.message || "Đang dùng dữ liệu đã lưu trên máy.")}</p><button id="applyHomeRefresh" type="button" hidden>Cập nhật giao diện</button>${today.dailyFeeling ? "" : '<div id="dailyFeeling"><p>Hôm nay bạn thấy thế nào?</p><button type="button" data-feeling="good">😊 Khỏe</button> <button type="button" data-feeling="normal">😐 Bình thường</button> <button type="button" data-feeling="tired">😴 Mệt</button> <button type="button" data-feeling="skip">Bỏ qua</button><p role="alert"></p></div>'}`;
