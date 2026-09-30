@@ -92,6 +92,7 @@ function expandLibraryForPlan(rows, target) {
   }))).flat());
 }
 function renderRoundWorkout(app, item, rows, active) {
+  let closeExerciseClock = null;
   const rounds = [...new Set(rows.map(row => row.round))];
   const checked = new Set();
   const started = Date.now();
@@ -101,11 +102,13 @@ function renderRoundWorkout(app, item, rows, active) {
     saved = false,
     resting = false;
   const stop = () => {
+    if (closeExerciseClock) { closeExerciseClock(); closeExerciseClock = null; }
     if (timer !== null) clearTimeout(timer);
     timer = null;
   };
   app.stopWorkoutTimer = stop;
   function render() {
+    if (closeExerciseClock) { closeExerciseClock(); closeExerciseClock = null; }
     if (!active()) {
       stop();
       return;
@@ -118,6 +121,22 @@ function renderRoundWorkout(app, item, rows, active) {
         <div id="roundExercises">${current.map(row => `<label style="display:flex;align-items:flex-start;gap:12px;padding:14px 0"><input type="checkbox" data-round-exercise="${row.key}" ${checked.has(row.key) ? "checked" : ""}><span><strong>${htmlText(row.exercise)}</strong><br>${htmlText(row.repsTime)}${row.rest ? " · Nghỉ " + htmlText(row.rest) : ""}${row.note ? "<br>" + htmlText(row.note) : ""}</span></label>`).join("")}</div>
         <div id="roundRestPanel" hidden><h3>Đã xong vòng ${index + 1} — nghỉ</h3><p id="roundCountdown" role="status"></p><button id="skipRoundRest" type="button">Bỏ qua nghỉ</button></div><p id="roundMessage" role="alert"></p><button id="exitRounds" type="button">Về Home</button></section>`;
     const input = document.getElementById("roundRestSeconds");
+    app.querySelectorAll('[data-round-exercise]').forEach(box => {
+      const row = current.find(r => r.key === box.dataset.roundExercise);
+      if (box.checked || !parseExerciseClock(row.repsTime)) return;
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = '▶ Bắt đầu';
+      button.setAttribute('aria-label', 'Bắt đầu tính giờ ' + row.exercise);
+      box.closest('label').after(button);
+      button.onclick = () => {
+        if (!active() || resting || saved) return;
+        if (closeExerciseClock) closeExerciseClock();
+        closeExerciseClock = openExerciseClock(row, active, () => {
+          box.checked = true;
+          box.onchange(); // Use the existing checklist/progress flow unchanged.
+        }, button);
+      };
+    });
     input.onchange = () => {
       const value = Number(input.value);
       if (input.value === "" || !Number.isInteger(value) || value < 0 || value > 3600) {
@@ -183,6 +202,60 @@ function renderRoundWorkout(app, item, rows, active) {
     }
   }
   render();
+}
+function parseExerciseClock(value) {
+  const text = String(value ?? '').trim().toLowerCase();
+  const reps = text.match(/^(\d+(?:[.,]\d+)?)\s*reps?\b/);
+  if (reps && Number(reps[1].replace(',', '.')) > 0) return {mode:'up', seconds:0};
+  const time = text.match(/^(\d+(?:[.,]\d+)?)\s*(s|giây|sec|seconds?|phút|min|minutes?)$/);
+  if (!time) return null;
+  const seconds = Number(time[1].replace(',', '.')) * (/^(phút|min|minutes?)$/.test(time[2]) ? 60 : 1);
+  return Number.isFinite(seconds) && seconds > 0 ? {mode:'down', seconds} : null;
+}
+function exerciseClockSeconds(spec, elapsedMs) {
+  return spec.mode === 'down' ? Math.max(0, Math.ceil(spec.seconds - elapsedMs / 1000)) : Math.floor(Math.max(0, elapsedMs) / 1000);
+}
+function formatExerciseClock(seconds) {
+  return String(Math.floor(seconds / 60)).padStart(2,'0') + ':' + String(seconds % 60).padStart(2,'0');
+}
+function openExerciseClock(row, active, complete, trigger) {
+  const spec = parseExerciseClock(row.repsTime);
+  const dialog = document.createElement('dialog');
+  dialog.className = 'exercise-clock';
+  dialog.setAttribute('aria-label', 'Đồng hồ ' + row.exercise);
+  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><label><input type="checkbox" data-clock-complete> Hoàn thành</label></div>`;
+  document.body.append(dialog);
+  let timer=null, closed=false, paused=false, elapsed=0, started=Date.now();
+  const close = () => {
+    if (closed) return;
+    closed=true; clearTimeout(timer); dialog.close(); dialog.remove();
+    if (trigger?.isConnected) trigger.focus();
+  };
+  dialog.querySelector('.exercise-clock-close').onclick = close;
+  dialog.addEventListener('cancel', event => {event.preventDefault();close();});
+  dialog.querySelector('[data-clock-complete]').onchange = () => {
+    if (!active()) {close();return;}
+    close(); complete();
+  };
+  const pause=dialog.querySelector('[data-clock-pause]');
+  pause.onclick = () => {
+    if (!active()) {close();return;}
+    if (!paused) elapsed += Date.now()-started; else started=Date.now();
+    paused=!paused; pause.textContent=paused?'Tiếp tục':'Tạm dừng';
+  };
+  function tick() {
+    if (closed) return;
+    if (!active()) {close();return;}
+    const seconds=exerciseClockSeconds(spec,elapsed+(paused?0:Date.now()-started));
+    dialog.querySelector('[role="timer"]').textContent=formatExerciseClock(seconds);
+    if(spec.mode==='down' && seconds===0){
+      dialog.querySelector('.exercise-clock-end').textContent='Hết giờ';
+      pause.disabled=true; return; // Never auto-tick or advance a round.
+    }
+    timer=setTimeout(tick,200);
+  }
+  dialog.showModal(); tick();
+  return close;
 }
 async function beginWorkout(item) {
   requireCurrentUser();

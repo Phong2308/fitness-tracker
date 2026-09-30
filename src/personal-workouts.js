@@ -124,10 +124,24 @@ function showPersonalWorkoutEditor(sample = {}) {
   app.innerHTML = `<section class="card"><h2>Tạo bài tập riêng</h2><p>Lưu cho ${htmlText(getCurrentUserName())}. Lưu xong chọn “Xếp vào lịch”.</p><form id="personalForm"><label>Tên bài tập<input name="workoutName" maxlength="100" required value="${htmlText(sample.name || '')}"></label><label>Nghỉ giữa vòng (giây)<input name="restSeconds" type="number" min="0" max="3600" step="1" value="${sample.restSeconds ?? 60}" required></label><p>Thư viện chỉ lưu danh sách động tác. Số vòng lấy từ Mục tiêu trong Weekly Plan.</p><div id="personalRows"></div><button type="button" id="personalAdd">+ Động tác</button><p id="personalError" role="alert"></p><button id="personalSave" type="submit">Lưu bài tập</button> <button id="personalCancel" type="button">Quay lại</button></form></section>`;
   const form = document.getElementById('personalForm');
   function collect() {
+    form.querySelectorAll('[data-personal-row]').forEach(el => {
+      const input=el.querySelector('[data-field="repsTime"]');
+      input.value = formatExerciseUnit(input.value, el.querySelector('[data-reps-unit]').value);
+    });
     rows = [...form.querySelectorAll('[data-personal-row]')].map(el => Object.fromEntries([...el.querySelectorAll('[data-field]')].map(input => [input.dataset.field, input.value])));
   }
   function renderRows() {
     document.getElementById('personalRows').innerHTML = rows.map((r, i) => `<fieldset data-personal-row style="border:1px solid #e2e8f0;border-radius:12px;margin:12px 0;padding:12px"><legend>Động tác ${i + 1}</legend><label>Tên động tác<input data-field="exercise" maxlength="160" required value="${htmlText(r.exercise)}"></label><label>Số lần / thời gian<input data-field="repsTime" maxlength="100" required placeholder="15 reps hoặc 45 giây" value="${htmlText(r.repsTime)}"></label><label>Nghỉ sau động tác<input data-field="rest" maxlength="60" placeholder="60 giây" value="${htmlText(r.rest)}"></label><label>Ghi chú<input data-field="note" maxlength="300" value="${htmlText(r.note)}"></label><button type="button" data-remove-row="${i}">Bỏ động tác</button></fieldset>`).join('');
+    form.querySelectorAll('[data-personal-row]').forEach(el => {
+      const input=el.querySelector('[data-field="repsTime"]');
+      const label=document.createElement('label'); label.textContent='Đơn vị';
+      const select=document.createElement('select'); select.dataset.repsUnit='';
+      select.innerHTML='<option value="reps">reps</option><option value="giây">giây (s)</option><option value="phút">phút</option>';
+      const spec=parseExerciseClock(input.value);
+      select.value=spec?.mode==='down' ? (/phút|min/i.test(input.value)?'phút':'giây') : 'reps';
+      select.onchange=()=>{input.value=formatExerciseUnit(input.value,select.value,true);};
+      label.append(select); input.closest('label').after(label);
+    });
     form.querySelectorAll('[data-remove-row]').forEach(button => button.onclick = () => {
       collect();
       rows.splice(Number(button.dataset.removeRow), 1);
@@ -189,4 +203,10 @@ function showPersonalWorkoutEditor(sample = {}) {
     }
   };
 }
-
+function formatExerciseUnit(value, unit, replace=false) {
+  const text=String(value || '').trim();
+  if (!['reps','giây','phút'].includes(unit)) return text;
+  if (/^\d+(?:[.,]\d+)?$/.test(text)) return text+' '+unit;
+  if (replace) return text.replace(/^(\d+(?:[.,]\d+)?)\s*(?:reps?|giây|s|sec|seconds?|phút|min|minutes?)(?=\s|$)/i, '$1 '+unit);
+  return text; // Keep legacy text, including “mỗi chân”, unchanged.
+}
