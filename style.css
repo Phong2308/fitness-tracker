@@ -1,4 +1,63 @@
 
+/* Home dashboard: scoped so workout sessions and editors keep their own layout. */
+.home-dashboard { color:#173d32; font-family:Arial,Helvetica,sans-serif; }
+.home-dashboard .card { border:1px solid #e4ebe6; box-shadow:0 5px 22px #173d3208; border-radius:22px; }
+.home-dashboard button { min-height:46px; font-size:15px; background:#176b52; border-radius:12px; padding:12px 16px; }
+.home-dashboard button:disabled { opacity:.6; cursor:default; }
+.home-dashboard :is(button,input,select,summary):focus-visible { outline:3px solid #69bca0; outline-offset:3px; }
+.home-dashboard .header h1 { font-size:32px; letter-spacing:-1px; margin:22px 0 8px; }
+.home-dashboard .header p { font-size:14px; color:#748079; }
+.home-brand { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.home-brand > span { font-size:11px; font-weight:800; letter-spacing:2px; }
+.home-brand button { width:auto; max-width:50%; overflow-wrap:anywhere; margin:0; background:#fff; color:#214c3e; border:1px solid #dce5df; border-radius:24px; font-size:13px; }
+.home-dashboard h2 { font-size:21px; letter-spacing:-.4px; margin-top:0; }
+.home-dashboard h3 { font-size:19px; }
+.home-progress { display:grid; grid-template-columns:1fr 88px; gap:8px 18px; align-items:center; }
+.home-progress > h2 { margin:0; }
+.home-progress > .progress-bar { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.home-progress > p { grid-column:1; font-size:13px; color:#65786d; margin:0; }
+.home-ring { grid-column:2; grid-row:1 / 3; width:88px; height:88px; border-radius:50%; background:conic-gradient(#176b52 var(--progress),#e9eee9 0); padding:8px; }
+.home-ring span { display:grid; place-items:center; width:100%; height:100%; border-radius:50%; background:white; font-size:23px; font-weight:700; }
+.home-dashboard .home-streak { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:6px 18px; border:0; border-top:1px solid #e9eee9; box-shadow:none; border-radius:0; padding:14px 0 0; margin:8px 0 0; }
+.home-streak h2 { font-size:14px; margin:0; }
+.home-streak p { font-size:12px; margin:0; color:#526c5e; }
+.home-dashboard .home-workout { background:linear-gradient(130deg,#103f35,#176b52); color:#fff; border:0; }
+.home-workout > h2 { font-size:15px; color:#d9eee3; }
+.home-workout > .habit-item { border:0; background:transparent; padding:0; margin:18px 0 24px; }
+.home-workout > .habit-item h3 { font-size:30px; letter-spacing:-.6px; margin:12px 0; overflow-wrap:anywhere; }
+.home-workout > .habit-item p { font-size:14px; color:#e0eee7; }
+.home-workout button[data-start-workout] { background:#f4faf6; color:#174f3c; font-size:17px; }
+.home-workout .habit-item [role="status"] { color:#c4f4d9!important; }
+.home-alternative { border-top:1px solid #ffffff30; padding-top:14px; }
+.home-alternative summary { font-size:13px; cursor:pointer; padding:8px 0; }
+.home-alternative label { color:#e0eee7; }
+.home-alternative .replacement-workout { border:0; padding-top:8px; }
+.home-shortcuts { display:flex; gap:10px; margin:-4px 0 28px; }
+.home-shortcuts button { margin:0; flex:1; background:#fff; border:1px solid #cbded3; color:#21573e; font-size:13px; }
+.home-dashboard .home-habits { padding:0; border:0; background:transparent; box-shadow:none; }
+.home-habits > h2 { margin:0 0 18px; }
+.home-dashboard .home-habit { --habit-color:#1684e8; padding:20px; margin:0 0 14px; border:1px solid #e4ebe6; border-radius:20px; background:#fff; box-shadow:0 4px 16px #173d3205; }
+.home-habit h3 { margin:0 0 12px; }
+.home-habit p { font-size:13px; color:#5e7166; line-height:1.6; }
+.home-habit label { font-size:13px; color:#566b60; }
+.home-habit input { min-height:46px; border-color:#dde7e0; color:#173d32; background:#fbfdfb; }
+.home-habit .habit-target-line { flex-wrap:wrap; gap:6px; }
+.home-habit button[data-edit-target] { width:auto; min-height:44px; background:transparent; color:#557967; border:0; font-size:12px; padding:6px 8px; }
+.home-habit-meter { height:8px; background:#edf1f4; border-radius:8px; overflow:hidden; margin:16px 0; }
+.home-habit-meter span { display:block; height:100%; background:var(--habit-color); border-radius:8px; }
+.home-water-quick { display:flex; gap:10px; }
+.home-water-quick button { flex:1; margin:0 0 14px; background:#eaf5ff; color:#0870c8; }
+.home-habit-pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
+.home-dashboard .home-habit-sleepHours { --habit-color:#8871df; }
+.home-dashboard .home-habit-steps { --habit-color:#22ad88; }
+.home-habits > details { font-size:13px; padding:8px 12px; color:#61786a; }
+.home-body summary { font-weight:600; font-size:18px; cursor:pointer; min-height:28px; }
+.home-body form { margin-top:18px; }
+.home-sync button { background:white; border:1px solid #407661; color:#1e5b42; }
+.home-sync p { font-size:12px; color:#687f72; line-height:1.5; }
+.home-dashboard [hidden] { display:none!important; }
+@media(max-width:390px) { .home-habit-pair { grid-template-columns:1fr; gap:0; } .home-brand > span { font-size:10px; letter-spacing:1px; } }
+
 /* Schedule editor only: preserve styles and behavior of the rest of the app. */
 .schedule-screen { border:1px solid #e2e9e6; background:linear-gradient(160deg,#f0f8f4 0,#fff 280px); }
 .schedule-screen h2 { font-size:28px; letter-spacing:-.8px; color:#153c32; margin:0 0 10px; }
