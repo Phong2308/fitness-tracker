@@ -5,7 +5,8 @@ const WORKOUT_TYPES = {
   swimming: "🏊 Bơi",
   cycling: "🚴 Đạp xe",
   running: "🏃 Chạy bộ",
-  calisthenics: "💪 Calisthenics"
+  walking: "🚶 Đi bộ",
+  calisthenics: "💪 Workout"
 };
 function resolveWorkoutType(item) {
   if (item.workoutId || item.personalWorkoutId) return 'calisthenics';
@@ -14,6 +15,7 @@ function resolveWorkoutType(item) {
   if (/boi|swim/.test(raw)) return "swimming";
   if (/dap xe|cycling|cycle/.test(raw)) return "cycling";
   if (/chay|running|run/.test(raw)) return "running";
+  if (/di bo|walking|walk/.test(raw)) return "walking";
   return null;
 }
 function isPlannedWorkoutComplete(item, today) {
