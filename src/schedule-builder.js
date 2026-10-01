@@ -38,6 +38,15 @@ async function showNextWeekSchedule() {
     let pending = null;
     app.innerHTML = `<section class="card"><h2>Tạo lịch tuần sau</h2><p>${htmlText(user.userName)} · ${htmlText(user.userId)}</p><form id="weekBuilder"><label>Tuần cần lưu<input name="week" type="number" min="1" max="520" step="1" required value="${getCurrentWeek()+1}"></label><p>Gợi ý theo tuần đang chạy của app. Có thể chỉnh tuần trước khi lưu.</p><fieldset><legend>Chọn nhiều ngày</legend>${days.map((d,i)=>`<label style="display:inline-block;margin:8px"><input type="checkbox" data-day="${i}"> ${d}</label>`).join('')}</fieldset><label>Hoạt động<select id="batchActivity">${options('rest')}</select></label><button type="button" id="applyDays">Áp dụng</button><h3>Xem lại lịch</h3><p>Chọn Nghỉ để bỏ buổi tập. Workout: mục tiêu ví dụ 3 vòng; cardio: ví dụ 1000m.</p><div id="weekReview"></div><button type="submit">Lưu Weekly Plan</button> <button type="button" id="weekCancel">Về Home</button><p id="weekMessage" role="status"></p></form></section>`;
     const form = document.getElementById('weekBuilder'), message = document.getElementById('weekMessage');
+    form.closest('section').classList.add('schedule-screen');
+    form.querySelector('fieldset').classList.add('schedule-days');
+    form.querySelector('h3').nextElementSibling.textContent = 'Chọn bài và số vòng, hoặc đặt mục tiêu cardio cho từng ngày.';
+    const actions = document.createElement('div');
+    actions.className = 'schedule-actions';
+    const saveButton = form.querySelector('[type="submit"]');
+    saveButton.textContent = 'Lưu lịch tuần';
+    saveButton.before(actions);
+    actions.append(saveButton, document.getElementById('weekCancel'));
     const collect = () => form.querySelectorAll('[data-review]').forEach(el => {
       const row = draft[Number(el.dataset.review)];
       el.querySelectorAll('[data-prop]').forEach(input => row[input.dataset.prop] = input.value);
@@ -45,6 +54,11 @@ async function showNextWeekSchedule() {
     const render = () => {
       document.getElementById('weekReview').innerHTML = draft.map((r,i)=>`<fieldset data-review="${i}"><legend>${days[i]}</legend><label>Hoạt động<select data-prop="key">${options(r.key)}</select></label>${scheduleFields(r,choices.find(c=>c.key===r.key))}${r.key==='rest'?'':`<button type="button" data-clear="${i}">Xóa buổi</button>`}</fieldset>`).join('');
       form.querySelectorAll('[data-prop="key"]').forEach(select=>select.onchange=()=>{collect();render();});
+      form.querySelectorAll('[data-review]').forEach(el=>{
+        const row = draft[Number(el.dataset.review)];
+        el.dataset.kind = row.key==='rest'?'rest':row.key.startsWith('workout:')?'workout':'cardio';
+        el.querySelector('legend').textContent = days[row.dayNo-1] + ' · ' + (el.dataset.kind==='rest'?'Nghỉ ngơi':el.dataset.kind==='workout'?'Workout':'Cardio');
+      });
       form.querySelectorAll('details input').forEach(input=>{
         input.oninvalid=()=>{input.closest('details').open=true;};
         input.oninput=()=>{input.closest('details').querySelector('summary').textContent='Thời lượng dự kiến: '+input.value+' phút';};
