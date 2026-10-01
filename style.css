@@ -1,4 +1,46 @@
 
+/* Schedule editor only: preserve styles and behavior of the rest of the app. */
+.schedule-screen { border:1px solid #e2e9e6; background:linear-gradient(160deg,#f0f8f4 0,#fff 280px); }
+.schedule-screen h2 { font-size:28px; letter-spacing:-.8px; color:#153c32; margin:0 0 10px; }
+.schedule-screen > p { color:#487064; font-size:14px; font-weight:600; }
+#weekBuilder { --schedule-accent:#176b52; }
+#weekBuilder h3 { margin:32px 0 8px; font-size:21px; letter-spacing:-.4px; }
+#weekBuilder p { color:#65766f; font-size:13px; line-height:1.6; }
+#weekBuilder label { display:block; font-size:13px; font-weight:600; color:#43594f; margin:12px 0; }
+#weekBuilder input:not([type="checkbox"]), #weekBuilder select {
+  display:block; width:100%; min-width:0; min-height:48px; margin:7px 0 0;
+  padding:12px 14px; border:1px solid #dce5df; border-radius:12px;
+  background:#fff; color:#18382d; font:400 16px/1.4 Arial,sans-serif; box-shadow:0 1px 2px #173f2905;
+}
+#weekBuilder input:focus-visible, #weekBuilder select:focus-visible, #weekBuilder button:focus-visible, #weekBuilder summary:focus-visible {
+  outline:3px solid #6ab99d; outline-offset:3px;
+}
+#weekBuilder button { min-height:46px; border-radius:12px; padding:12px 16px; font-size:14px; font-weight:600; background:var(--schedule-accent); color:#fff; border:1px solid transparent; }
+#weekBuilder button:disabled { opacity:.6; cursor:default; }
+#weekBuilder .schedule-days { display:flex; flex-wrap:wrap; gap:6px; border:0; padding:8px 0; margin:20px 0 8px; }
+#weekBuilder .schedule-days legend { font-size:13px; font-weight:600; color:#43594f; margin-bottom:4px; }
+#weekBuilder .schedule-days label { display:flex!important; align-items:center; justify-content:center; gap:5px; min-height:44px; flex:1 0 56px; margin:0!important; padding:8px 4px; background:#fff; border:1px solid #dce5df; border-radius:10px; cursor:pointer; }
+#weekBuilder .schedule-days label:has(input:checked) { background:#e0f2e9; border-color:#176b52; color:#14553f; }
+#weekBuilder .schedule-days input { width:15px; height:15px; margin:0; accent-color:#176b52; }
+#weekReview { display:grid; gap:20px; }
+#weekReview fieldset { min-width:0; margin:0; padding:12px 18px 18px; border:1px solid #dce7e0; border-radius:18px; background:#fff; box-shadow:0 5px 18px #193d2b06; }
+#weekReview legend { padding:5px 12px; border-radius:8px; background:#e8f4ec; color:#20583f; font-size:13px; font-weight:700; }
+#weekReview [data-kind="cardio"] legend { background:#eaf1fb; color:#365c8c; }
+#weekReview [data-kind="rest"] { background:#f6f8f7; box-shadow:none; }
+#weekReview [data-kind="rest"] legend { background:#edf0ee; color:#63736b; }
+#weekReview details { margin:16px 0; border-top:1px solid #eef2ef; padding-top:14px; }
+#weekReview summary { color:#62786b; font-size:13px; cursor:pointer; min-height:32px; }
+#weekReview [data-clear] { width:auto; background:transparent; color:#a44b49; border-color:#edddda; font-size:13px; margin:8px 0 0; min-height:44px; }
+#weekBuilder .schedule-actions { display:flex; gap:10px; margin-top:24px; padding-top:18px; border-top:1px solid #e2e9e4; }
+#weekBuilder .schedule-actions button { margin:0; flex:2; }
+#weekBuilder #weekCancel { flex:1; background:#eef3f0; color:#435c4e; }
+#weekMessage:not(:empty) { padding:14px 16px; background:#edf5f0; border:1px solid #dce8df; border-radius:12px; color:#365345; overflow-wrap:anywhere; }
+@media(max-width:480px) {
+  .schedule-screen { padding:20px 16px; }
+  .schedule-screen h2 { font-size:25px; }
+  #weekReview fieldset { padding:10px 14px 14px; }
+}
+
         html,
         body {
             margin: 0;
