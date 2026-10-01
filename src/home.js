@@ -246,20 +246,35 @@ function styleHomeDashboard(app, percent, habits, targets, guard, scheduleButton
   const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   meals.innerHTML = `<h3>Hôm nay ăn gì?</h3><form id="mealForm"><label>Món ăn<input name="food" type="text" maxlength="300" placeholder="Ví dụ: Cơm, cá kho, rau luộc" required></label><label>Giờ ăn<input name="mealTime" type="time" value="${time}" required></label><button type="submit">＋ Thêm bữa ăn</button><p role="alert"></p></form><div id="mealList" aria-live="polite"></div><p class="local-status">Bữa ăn lưu trên thiết bị này theo nhân vật và ngày; chưa đồng bộ Sheet.</p>`;
   const list = meals.querySelector('#mealList');
-  meals.querySelector('.local-status').textContent = mealMessages[getCurrentUserId()] || 'Bấm Đồng bộ Google Sheet để lưu bữa ăn vào tab ăn uống.';
+  meals.querySelector('.local-status').textContent = mealMessages[getCurrentUserId()] || 'Thêm bữa ăn sẽ tự gửi lên Sheet. Nếu lỗi mạng, dữ liệu vẫn giữ trên máy.';
   const renderMeals = () => {
     list.innerHTML = [...(getTodayData().meals || [])].sort((a,b)=>a.time.localeCompare(b.time)).map(m=>`<p><strong>${htmlText(m.time)}</strong> · ${htmlText(m.food)}</p>`).join('') || '<p>Chưa ghi bữa ăn hôm nay.</p>';
   };
   renderMeals();
   const mealForm = meals.querySelector('form');
-  mealForm.onsubmit = event => {
+  mealForm.onsubmit = async event => {
     event.preventDefault();
+    const button = mealForm.querySelector('[type="submit"]');
+    if (button.disabled) return;
+    const selected = CURRENT_USER;
+    let savedLocally = false;
+    button.disabled = true;
     try {
       guard(); saveMeal(mealForm.elements.food.value, mealForm.elements.mealTime.value);
+      savedLocally = true;
       mealForm.elements.food.value = '';
       renderMeals();
-      mealForm.querySelector('[role="alert"]').textContent = 'Đã lưu trên máy. Bấm Đồng bộ Google Sheet để gửi bữa ăn.';
-    } catch(error) {mealForm.querySelector('[role="alert"]').textContent = error.message;}
+      mealForm.querySelector('[role="alert"]').textContent = 'Đang gửi bữa ăn lên Sheet…';
+      await syncMealsToSheet(selected);
+      if (CURRENT_USER !== selected || !mealForm.isConnected) return;
+      guard();
+      renderMeals();
+      mealForm.querySelector('[role="alert"]').textContent = 'Đã lưu bữa ăn lên Sheet.';
+    } catch(error) {
+      const message = savedLocally ? 'Bữa ăn đã giữ trên máy, chưa gửi được lên Sheet: '+error.message+' Bạn có thể bấm Đồng bộ Google Sheet để gửi lại; không cần nhập lại bữa.' : error.message;
+      if (savedLocally) mealMessages[selected.userId] = message;
+      if (mealForm.isConnected && CURRENT_USER === selected) mealForm.querySelector('[role="alert"]').textContent = message;
+    } finally {button.disabled = false;}
   };
   details.append(meals);
   body.append(details);
