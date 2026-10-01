@@ -12,6 +12,14 @@ function saveBodyData(weight, food) {
   if (food !== null) today.foodControlled = Boolean(food);
   saveTodayData(today);
 }
+function saveMeal(food, time) {
+  const name = String(food || '').trim();
+  if (!name || name.length > 300) throw new Error('Nhập món ăn từ 1 đến 300 ký tự.');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(time))) throw new Error('Chọn giờ ăn hợp lệ.');
+  const today = getTodayData();
+  today.meals = [...(today.meals || []), {food:name, time:String(time), at:new Date().toISOString()}];
+  saveTodayData(today);
+}
 function habitState(today) {
   return today.habits || {
     waterMl: 0,
