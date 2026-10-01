@@ -80,8 +80,9 @@ async function syncFitnessToSheet() {
       count++;
     }
     if (CURRENT_USER !== selected) throw new Error("Đã đổi nhân vật; chưa đồng bộ streak.");
+    await syncMealsToSheet(selected);
     await syncCompletedDays(userId);
-    fitnessSyncMessages[userId] = "Đã đồng bộ " + count + " ngày và cập nhật ngày đạt lên Google Sheet.";
+    fitnessSyncMessages[userId] = "Đã đồng bộ " + count + " ngày, bữa ăn và ngày đạt lên Google Sheet.";
   } catch (error) {
     fitnessSyncMessages[userId] = "Đã gửi " + count + " ngày. Chưa đồng bộ hết: " + (error.name === "AbortError" ? "Kết nối quá lâu. Có thể bấm gửi lại; mã workout giúp chống trùng." : error.message);
   } finally {

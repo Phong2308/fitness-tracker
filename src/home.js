@@ -240,6 +240,28 @@ function styleHomeDashboard(app, percent, habits, targets, guard, scheduleButton
   details.innerHTML = '<summary>Cơ thể & ăn uống</summary>';
   body.querySelector('h2').remove();
   while(body.firstChild) details.append(body.firstChild);
+  const meals = document.createElement('div');
+  meals.className = 'home-meals';
+  const now = new Date();
+  const time = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  meals.innerHTML = `<h3>Hôm nay ăn gì?</h3><form id="mealForm"><label>Món ăn<input name="food" type="text" maxlength="300" placeholder="Ví dụ: Cơm, cá kho, rau luộc" required></label><label>Giờ ăn<input name="mealTime" type="time" value="${time}" required></label><button type="submit">＋ Thêm bữa ăn</button><p role="alert"></p></form><div id="mealList" aria-live="polite"></div><p class="local-status">Bữa ăn lưu trên thiết bị này theo nhân vật và ngày; chưa đồng bộ Sheet.</p>`;
+  const list = meals.querySelector('#mealList');
+  meals.querySelector('.local-status').textContent = mealMessages[getCurrentUserId()] || 'Bấm Đồng bộ Google Sheet để lưu bữa ăn vào tab ăn uống.';
+  const renderMeals = () => {
+    list.innerHTML = [...(getTodayData().meals || [])].sort((a,b)=>a.time.localeCompare(b.time)).map(m=>`<p><strong>${htmlText(m.time)}</strong> · ${htmlText(m.food)}</p>`).join('') || '<p>Chưa ghi bữa ăn hôm nay.</p>';
+  };
+  renderMeals();
+  const mealForm = meals.querySelector('form');
+  mealForm.onsubmit = event => {
+    event.preventDefault();
+    try {
+      guard(); saveMeal(mealForm.elements.food.value, mealForm.elements.mealTime.value);
+      mealForm.elements.food.value = '';
+      renderMeals();
+      mealForm.querySelector('[role="alert"]').textContent = 'Đã lưu trên máy. Bấm Đồng bộ Google Sheet để gửi bữa ăn.';
+    } catch(error) {mealForm.querySelector('[role="alert"]').textContent = error.message;}
+  };
+  details.append(meals);
   body.append(details);
   root.append(sync);
 }

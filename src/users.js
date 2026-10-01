@@ -21,18 +21,18 @@ async function showUserSelector() {
   box.innerHTML = `
 
     
-    <section class="profile-picker" aria-labelledby="profileTitle">
+    <section class="profile-picker profile-welcome" aria-labelledby="profileTitle">
     <div class="profile-mark" aria-hidden="true">💪</div>
     <p class="profile-brand">FITNESS TRACKER</p>
-    <h2 id="profileTitle">Bạn là ai?</h2>
-    <p class="profile-intro">Chọn nhân vật để bắt đầu buổi tập hôm nay.</p>
+    <h2 id="profileTitle">Sẵn sàng cùng mình cố gắng hôm nay chứ?</h2>
+    <p class="profile-intro">Chọn nhân vật của bạn, mình bắt đầu nhé.</p>
     <label class="profile-label" for="userDropdown">Nhân vật của bạn</label>
 
 
     <select id="userDropdown">
 
         <option value="">
-            ▼ Chọn nhân vật
+            Chọn nhân vật
         </option>
 
     </select>
@@ -42,7 +42,7 @@ async function showUserSelector() {
 
 
     <button id="createUserBtn">
-        ➕ Tạo nhân vật mới
+        ＋ Tạo nhân vật mới
     </button>
     <p class="profile-note">Tiến độ và kết quả được lưu riêng cho từng nhân vật.</p>
     </section>
@@ -162,6 +162,7 @@ async function selectUser(user) {
   homeLoadState[userId] = {loading:true, planReady:false, message:"Đang cập nhật từ Sheet… Bạn có thể nhập thói quen ngay."};
   showHome();
   await Promise.allSettled([
+    restoreTodayMeals(),
     loadHabitTargetsFromSheet(userId), restoreTodayHabits(), loadStreakHistory(),
     loadWeeklyPlan().then(() => {
       if(CURRENT_USER === selectedUser) homeLoadState[userId].planReady = true;
