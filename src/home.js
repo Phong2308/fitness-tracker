@@ -155,4 +155,91 @@ function showHome() {
       form.querySelector(".form-error").textContent = error.message;
     }
   }));
+  styleHomeDashboard(app, percent, habits, targets, guard, scheduleButton);
+}
+
+// Presentation only. Move existing nodes so their handlers and state stay intact.
+function styleHomeDashboard(app, percent, habits, targets, guard, scheduleButton) {
+  const root = document.createElement('div');
+  root.className = 'home-dashboard';
+  while (app.firstChild) root.append(app.firstChild);
+  app.append(root);
+  const header = root.querySelector('header');
+  header.querySelector('h1').textContent = 'Chào ' + getCurrentUserName() + '!';
+  header.querySelector('p').remove();
+  const brand = document.createElement('div');
+  brand.className = 'home-brand';
+  brand.innerHTML = '<span>FITNESS TRACKER</span><button type="button" aria-label="Đổi nhân vật">'+htmlText(getCurrentUserName())+' ▾</button>';
+  brand.querySelector('button').onclick = showUserSelector;
+  header.prepend(brand);
+
+  const streak = root.querySelector('#streakCard');
+  const progress = streak.nextElementSibling;
+  progress.classList.add('home-progress');
+  const ring = document.createElement('div');
+  ring.className = 'home-ring';
+  ring.style.setProperty('--progress', Math.max(0, Math.min(100, percent))+'%');
+  ring.innerHTML = '<span>'+percent+'%</span>';
+  ring.setAttribute('aria-hidden','true');
+  progress.append(ring);
+  streak.classList.add('home-streak');
+  progress.append(streak);
+
+  const workout = root.querySelector('#startReplacement').closest('section');
+  workout.classList.add('home-workout');
+  progress.after(workout);
+  const replacement = workout.querySelector('.replacement-workout');
+  const syncButton = root.querySelector('#syncFitnessButton');
+  const sync = document.createElement('section');
+  sync.className = 'home-sync';
+  const syncNote = syncButton.previousElementSibling;
+  const syncMessage = scheduleButton.nextElementSibling;
+  sync.append(syncNote, syncButton, syncMessage);
+  const nav = document.createElement('div');
+  nav.className = 'home-shortcuts';
+  const personal = root.querySelector('#personalWorkouts');
+  personal.textContent = 'Bài tập của tôi';
+  nav.append(personal, scheduleButton);
+  workout.after(nav);
+  const alternative = document.createElement('details');
+  alternative.className = 'home-alternative';
+  alternative.innerHTML = '<summary>Tập thay thế & kết quả hôm nay</summary>';
+  replacement.before(alternative);
+  alternative.append(replacement);
+
+  const waterForm = root.querySelector('[data-habit="waterMl"]');
+  const habitsSection = waterForm.closest('section');
+  habitsSection.classList.add('home-habits');
+  habitsSection.querySelector('h2').textContent = 'Thói quen hôm nay';
+  ['waterMl','sleepHours','steps'].forEach(kind=>{
+    const form = root.querySelector('[data-habit="'+kind+'"]');
+    const card = form.closest('article');
+    card.classList.add('home-habit', 'home-habit-'+kind);
+    const meter = document.createElement('div');
+    meter.className = 'home-habit-meter';
+    const value = targets[kind]>0 ? Math.max(0,Math.min(100,habits[kind]/targets[kind]*100)) : 0;
+    meter.innerHTML = '<span style="width:'+value+'%"></span>';
+    meter.setAttribute('aria-hidden','true');
+    form.before(meter);
+  });
+  const quick = document.createElement('div');
+  quick.className = 'home-water-quick';
+  quick.innerHTML = '<button type="button" data-ml="200">+ 200 ml</button><button type="button" data-ml="350">+ 350 ml</button>';
+  quick.querySelectorAll('button').forEach(button=>button.onclick=()=>{
+    try { guard(); saveHabitValue('waterMl',Number(button.dataset.ml)); showHome(); }
+    catch(error) {waterForm.querySelector('.form-error').textContent=error.message;}
+  });
+  waterForm.before(quick);
+  const pair = document.createElement('div');
+  pair.className = 'home-habit-pair';
+  pair.append(root.querySelector('.home-habit-sleepHours'), root.querySelector('.home-habit-steps'));
+  habitsSection.append(pair);
+  const body = root.querySelector('#bodyForm').closest('section');
+  body.classList.add('home-body');
+  const details = document.createElement('details');
+  details.innerHTML = '<summary>Cơ thể & ăn uống</summary>';
+  body.querySelector('h2').remove();
+  while(body.firstChild) details.append(body.firstChild);
+  body.append(details);
+  root.append(sync);
 }
