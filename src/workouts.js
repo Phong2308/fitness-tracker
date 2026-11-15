@@ -169,7 +169,7 @@ function renderRoundWorkout(app, item, rows, active) {
         if (!active() || exerciseRestStarted === null) return;
         const elapsed = Math.floor(Math.max(0, Date.now() - exerciseRestStarted) / 1000);
         const remaining = exerciseRestDuration === null ? null : Math.max(0, exerciseRestDuration - elapsed);
-        if (remaining !== null && remaining <= 3 && remaining !== lastSoundSecond) {
+        if (remaining !== null && remaining <= 5 && remaining !== lastSoundSecond) {
           sound.beep(remaining === 0);
           lastSoundSecond = remaining;
         }
@@ -415,7 +415,7 @@ function openExerciseClock(row, active, complete, trigger, isAutomatic = () => f
     if (closed) return;
     if (!active()) {close();return;}
     const seconds=exerciseClockSeconds(spec,elapsed+(paused?0:Date.now()-started));
-    if (spec.mode === 'down' && !paused && seconds <= 3 && seconds !== lastSoundSecond) {
+    if (spec.mode === 'down' && !paused && seconds <= 5 && seconds !== lastSoundSecond) {
       sound.beep(seconds === 0);
       lastSoundSecond = seconds;
     }
