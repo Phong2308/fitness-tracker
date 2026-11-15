@@ -129,22 +129,25 @@ function renderRoundWorkout(app, item, rows, active) {
         <div class="progress-bar" role="progressbar" aria-label="Tiến độ bài tập" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(checked.size / rows.length * 100)}"><div style="height:100%;background:#111827;width:${checked.size / rows.length * 100}%"></div></div><p>${checked.size}/${rows.length} bài hoàn thành</p>
         <h3>Vòng ${index + 1} / ${rounds.length}</h3>
         <label>Nghỉ giữa các vòng (giây)<input id="roundRestSeconds" type="number" min="0" max="3600" step="1" value="${restSeconds}" style="width:100px;margin:8px;padding:8px"></label>
-        <p id="exerciseRestClock" role="timer" hidden></p>
+        <dialog id="exerciseRestDialog" class="rest-dialog" aria-labelledby="restTitle"><h2 id="restTitle">Thời gian nghỉ</h2><p id="exerciseRestLabel"></p><div id="exerciseRestClock" role="timer"></div><p id="nextExerciseName"></p><p id="restError" role="alert"></p><button id="startNextExercise" type="button">▶ Bắt đầu động tác tiếp theo</button></dialog>
         <div id="roundExercises">${current.map(row => `<label style="display:flex;align-items:flex-start;gap:12px;padding:14px 0"><input type="checkbox" data-round-exercise="${row.key}" ${checked.has(row.key) ? "checked" : ""}><span><strong>${htmlText(row.exercise)}</strong><br>${htmlText(row.repsTime)}${row.rest ? " · Nghỉ " + htmlText(row.rest) : ""}${row.note ? "<br>" + htmlText(row.note) : ""}</span></label>`).join("")}</div>
         <div id="roundRestPanel" hidden><h3>Đã xong vòng ${index + 1} — nghỉ</h3><p id="roundCountdown" role="status"></p><button id="skipRoundRest" type="button">Bỏ qua nghỉ</button></div><p id="roundMessage" role="alert"></p><button id="exitRounds" type="button">Về Home</button></section>`;
     const input = document.getElementById("roundRestSeconds");
     if (exerciseRestStarted !== null) {
       const restClock = document.getElementById("exerciseRestClock");
-      restClock.hidden = false;
+      const restLabel = document.getElementById("exerciseRestLabel");
       const tickExerciseRest = () => {
         if (!active() || exerciseRestStarted === null) return;
         const elapsed = Math.floor(Math.max(0, Date.now() - exerciseRestStarted) / 1000);
         if (exerciseRestDuration === null) {
-          restClock.textContent = "Thời gian nghỉ (chưa có thời gian cài đặt): " + formatExerciseClock(elapsed);
+          restLabel.textContent = "Chưa đặt thời gian nghỉ";
+          restClock.textContent = formatExerciseClock(elapsed);
         } else if (elapsed < exerciseRestDuration) {
-          restClock.textContent = "Nghỉ còn: " + formatExerciseClock(exerciseRestDuration - elapsed);
+          restLabel.textContent = "Nghỉ còn";
+          restClock.textContent = formatExerciseClock(exerciseRestDuration - elapsed);
         } else {
-          restClock.textContent = "Nghỉ thêm: +" + formatExerciseClock(elapsed - exerciseRestDuration);
+          restLabel.textContent = "Nghỉ thêm";
+          restClock.textContent = "+" + formatExerciseClock(elapsed - exerciseRestDuration);
         }
         exerciseRestTimer = setTimeout(tickExerciseRest, 250);
       };
@@ -154,6 +157,7 @@ function renderRoundWorkout(app, item, rows, active) {
       const row = current.find(r => r.key === box.dataset.roundExercise);
       if (box.checked) return;
       const button = document.createElement('button');
+      button.dataset.startExercise = row.key;
       button.type = 'button'; button.textContent = '▶ Bắt đầu';
       button.setAttribute('aria-label', 'Bắt đầu tính giờ ' + row.exercise);
       box.closest('label').after(button);
@@ -177,14 +181,17 @@ function renderRoundWorkout(app, item, rows, active) {
             }];
             saveTodayData(today);
           } catch (error) {
-            document.getElementById('roundMessage').textContent = 'Chưa lưu được thời gian nghỉ: ' + error.message;
+            const message = 'Chưa lưu được thời gian nghỉ: ' + error.message;
+            document.getElementById('roundMessage').textContent = message;
+            document.getElementById('restError').textContent = message;
             return;
           }
         }
         exerciseRestStarted = null;
         if (exerciseRestTimer !== null) clearTimeout(exerciseRestTimer);
         exerciseRestTimer = null;
-        document.getElementById("exerciseRestClock").hidden = true;
+        const restDialog = document.getElementById("exerciseRestDialog");
+        if (restDialog.open) restDialog.close();
         if (!parseExerciseClock(row.repsTime)) return;
         closeExerciseClock = openExerciseClock(row, active, () => {
           box.checked = true;
@@ -192,6 +199,17 @@ function renderRoundWorkout(app, item, rows, active) {
         }, button);
       };
     });
+    if (exerciseRestStarted !== null) {
+      const nextRow = current.find(row => !checked.has(row.key));
+      const restDialog = document.getElementById('exerciseRestDialog');
+      document.getElementById('nextExerciseName').textContent = nextRow.exercise;
+      document.getElementById('startNextExercise').onclick = () => {
+        const button = [...app.querySelectorAll('[data-start-exercise]')].find(element => element.dataset.startExercise === nextRow.key);
+        if (button) button.click();
+      };
+      restDialog.addEventListener('cancel', event => event.preventDefault());
+      restDialog.showModal();
+    }
     input.onchange = () => {
       const value = Number(input.value);
       if (input.value === "" || !Number.isInteger(value) || value < 0 || value > 3600) {
