@@ -356,7 +356,11 @@ function createWorkoutSound() {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (!AudioContext) return;
         context ||= new AudioContext();
-        if (context.state === 'suspended') context.resume().catch(() => {});
+        if (context.state === 'suspended') {
+          context.resume().then(() => sound.beep(false)).catch(() => {});
+        } else {
+          sound.beep(false);
+        }
       } catch (_) { /* Audio is optional when the browser cannot start it. */ }
     },
     beep(finished) {
