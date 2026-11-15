@@ -292,3 +292,6 @@
 .auto-duration{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0;font-size:16px}
 .auto-duration[hidden],#automaticDurations[hidden]{display:none}
 .auto-duration input{box-sizing:border-box;width:90px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+.workout-settings{margin:14px 0;padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;text-align:left}
+.workout-settings summary{cursor:pointer;font-size:15px;font-weight:600;color:#475569}
+.workout-settings .auto-workout,.workout-settings .auto-duration{justify-content:flex-start;flex-wrap:wrap}
