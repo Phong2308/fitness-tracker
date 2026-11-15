@@ -289,3 +289,6 @@
 #app .rest-dialog #startNextExercise{min-height:56px;padding:14px 22px;font-size:18px;border-radius:12px}
 .auto-workout{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0;font-size:16px;font-weight:600;cursor:pointer}
 .auto-workout input{width:22px;height:22px;accent-color:#111827}
+.auto-duration{display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0;font-size:16px}
+.auto-duration[hidden],#automaticDurations[hidden]{display:none}
+.auto-duration input{box-sizing:border-box;width:90px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}

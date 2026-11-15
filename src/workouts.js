@@ -100,6 +100,7 @@ function renderRoundWorkout(app, item, rows, active) {
   let exerciseRestSource = null;
   let exerciseRestTimer = null;
   let automatic = false;
+  const exerciseDurations = {};
   const rounds = [...new Set(rows.map(row => row.round))];
   const checked = new Set();
   const started = Date.now();
@@ -130,8 +131,9 @@ function renderRoundWorkout(app, item, rows, active) {
         <div class="progress-bar" role="progressbar" aria-label="Tiến độ bài tập" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(checked.size / rows.length * 100)}"><div style="height:100%;background:#111827;width:${checked.size / rows.length * 100}%"></div></div><p>${checked.size}/${rows.length} bài hoàn thành</p>
         <h3>Vòng ${index + 1} / ${rounds.length}</h3>
         <label class="auto-workout"><input id="automaticWorkout" type="checkbox" ${automatic ? 'checked' : ''}> Tự động chuyển động tác</label>
+        <div id="automaticDurations" ${automatic ? '' : 'hidden'}>${[...new Map(rows.filter(row => parseExerciseClock(row.repsTime)?.mode !== 'down').map(row => [row.exercise, row])).values()].map(row => `<label class="auto-duration">${htmlText(row.exercise)} · giây <input type="number" min="1" step="1" inputmode="numeric" data-duration-exercise="${htmlText(row.exercise)}" value="${exerciseDurations[row.exercise] || ''}"></label>`).join('')}</div>
         <label>Nghỉ giữa các vòng (giây)<input id="roundRestSeconds" type="number" min="0" max="3600" step="1" value="${restSeconds}" style="width:100px;margin:8px;padding:8px"></label>
-        <dialog id="exerciseRestDialog" class="rest-dialog" aria-labelledby="restTitle"><h2 id="restTitle">Thời gian nghỉ</h2><p id="exerciseRestLabel"></p><div id="exerciseRestClock" role="timer"></div><p id="nextExerciseName"></p><label class="auto-workout"><input id="automaticRest" type="checkbox" ${automatic ? 'checked' : ''}> Tự động chuyển động tác</label><p id="restError" role="alert"></p><button id="startNextExercise" type="button">▶ Bắt đầu động tác tiếp theo</button></dialog>
+        <dialog id="exerciseRestDialog" class="rest-dialog" aria-labelledby="restTitle"><h2 id="restTitle">Thời gian nghỉ</h2><p id="exerciseRestLabel"></p><div id="exerciseRestClock" role="timer"></div><p id="nextExerciseName"></p><label class="auto-workout"><input id="automaticRest" type="checkbox" ${automatic ? 'checked' : ''}> Tự động chuyển động tác</label><label id="nextDurationLabel" class="auto-duration" hidden>Thời gian động tác (giây) <input id="nextDuration" type="number" min="1" step="1" inputmode="numeric"></label><p id="restError" role="alert"></p><button id="startNextExercise" type="button">▶ Bắt đầu động tác tiếp theo</button></dialog>
         <div id="roundExercises">${current.map(row => `<label style="display:flex;align-items:flex-start;gap:12px;padding:14px 0"><input type="checkbox" data-round-exercise="${row.key}" ${checked.has(row.key) ? "checked" : ""}><span><strong>${htmlText(row.exercise)}</strong><br>${htmlText(row.repsTime)}${row.rest ? " · Nghỉ " + htmlText(row.rest) : ""}${row.note ? "<br>" + htmlText(row.note) : ""}</span></label>`).join("")}</div>
         <div id="roundRestPanel" hidden><h3>Đã xong vòng ${index + 1} — nghỉ</h3><p id="roundCountdown" role="status"></p><button id="skipRoundRest" type="button">Bỏ qua nghỉ</button></div><p id="roundMessage" role="alert"></p><button id="exitRounds" type="button">Về Home</button></section>`;
     const input = document.getElementById("roundRestSeconds");
@@ -139,7 +141,14 @@ function renderRoundWorkout(app, item, rows, active) {
       automatic = enabled;
       document.getElementById('automaticWorkout').checked = enabled;
       document.getElementById('automaticRest').checked = enabled;
+      document.getElementById('automaticDurations').hidden = !enabled;
+      const nextLabel = document.getElementById('nextDurationLabel');
+      if (nextLabel.dataset.required === 'true') nextLabel.hidden = !enabled;
+      document.getElementById('restError').textContent = '';
     };
+    app.querySelectorAll('[data-duration-exercise]').forEach(field => {
+      field.oninput = () => { exerciseDurations[field.dataset.durationExercise] = field.value; };
+    });
     document.getElementById('automaticWorkout').onchange = event => updateAutomatic(event.target.checked);
     document.getElementById('automaticRest').onchange = event => updateAutomatic(event.target.checked);
     if (exerciseRestStarted !== null) {
@@ -157,7 +166,7 @@ function renderRoundWorkout(app, item, rows, active) {
         } else {
           restLabel.textContent = "Nghỉ thêm";
           restClock.textContent = "+" + formatExerciseClock(elapsed - exerciseRestDuration);
-          if (automatic) {
+          if (automatic && !document.getElementById('restError').textContent) {
             document.getElementById('startNextExercise').click();
             if (exerciseRestStarted === null) return;
           }
@@ -176,6 +185,15 @@ function renderRoundWorkout(app, item, rows, active) {
       box.closest('label').after(button);
       button.onclick = () => {
         if (!active() || resting || saved) return;
+        const duration = Number(exerciseDurations[row.exercise]);
+        const timedRow = automatic && parseExerciseClock(row.repsTime)?.mode !== 'down' && Number.isInteger(duration) && duration > 0
+          ? {...row, repsTime: duration + ' giây'} : row;
+        if (automatic && parseExerciseClock(timedRow.repsTime)?.mode !== 'down') {
+          const message = 'Nhập thời gian tính bằng giây cho ' + row.exercise + '.';
+          document.getElementById('roundMessage').textContent = message;
+          document.getElementById('restError').textContent = message;
+          return;
+        }
         if (closeExerciseClock) closeExerciseClock();
         if (exerciseRestStarted !== null) {
           try {
@@ -206,8 +224,8 @@ function renderRoundWorkout(app, item, rows, active) {
         exerciseRestTimer = null;
         const restDialog = document.getElementById("exerciseRestDialog");
         if (restDialog.open) restDialog.close();
-        if (!parseExerciseClock(row.repsTime)) return;
-        closeExerciseClock = openExerciseClock(row, active, () => {
+        if (!parseExerciseClock(timedRow.repsTime)) return;
+        closeExerciseClock = openExerciseClock(timedRow, active, () => {
           box.checked = true;
           box.onchange(); // Use the existing checklist/progress flow unchanged.
         }, button, () => automatic, updateAutomatic);
@@ -217,6 +235,17 @@ function renderRoundWorkout(app, item, rows, active) {
       const nextRow = current.find(row => !checked.has(row.key));
       const restDialog = document.getElementById('exerciseRestDialog');
       document.getElementById('nextExerciseName').textContent = nextRow.exercise;
+      const nextDurationLabel = document.getElementById('nextDurationLabel');
+      const nextDuration = document.getElementById('nextDuration');
+      nextDurationLabel.dataset.required = String(parseExerciseClock(nextRow.repsTime)?.mode !== 'down');
+      nextDurationLabel.hidden = !automatic || nextDurationLabel.dataset.required !== 'true';
+      nextDuration.value = exerciseDurations[nextRow.exercise] || '';
+      nextDuration.oninput = () => {
+        exerciseDurations[nextRow.exercise] = nextDuration.value;
+        document.getElementById('restError').textContent = '';
+        const field = [...app.querySelectorAll('[data-duration-exercise]')].find(element => element.dataset.durationExercise === nextRow.exercise);
+        if (field) field.value = nextDuration.value;
+      };
       document.getElementById('startNextExercise').onclick = () => {
         const button = [...app.querySelectorAll('[data-start-exercise]')].find(element => element.dataset.startExercise === nextRow.key);
         if (button) button.click();
