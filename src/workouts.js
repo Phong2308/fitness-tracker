@@ -95,6 +95,10 @@ function expandLibraryForPlan(rows, target) {
 }
 function renderRoundWorkout(app, item, rows, active) {
   let closeExerciseClock = null;
+  let exerciseRestStarted = null;
+  let exerciseRestDuration = null;
+  let exerciseRestSource = null;
+  let exerciseRestTimer = null;
   const rounds = [...new Set(rows.map(row => row.round))];
   const checked = new Set();
   const started = Date.now();
@@ -106,7 +110,10 @@ function renderRoundWorkout(app, item, rows, active) {
   const stop = () => {
     if (closeExerciseClock) { closeExerciseClock(); closeExerciseClock = null; }
     if (timer !== null) clearTimeout(timer);
+    if (exerciseRestTimer !== null) clearTimeout(exerciseRestTimer);
     timer = null;
+    exerciseRestTimer = null;
+    exerciseRestStarted = null;
   };
   app.stopWorkoutTimer = stop;
   function render() {
@@ -115,17 +122,37 @@ function renderRoundWorkout(app, item, rows, active) {
       stop();
       return;
     }
+    if (exerciseRestTimer !== null) clearTimeout(exerciseRestTimer);
+    exerciseRestTimer = null;
     const current = rows.filter(row => row.round === rounds[index]);
     app.innerHTML = `<section class="card"><h2>${htmlText(item.activity || "Calisthenics")}</h2><p>Mục tiêu: ${htmlText(item.duration || "")} · ${htmlText(item.target || rounds.length + " vòng")}</p><p>Workout Library</p>
         <div class="progress-bar" role="progressbar" aria-label="Tiến độ bài tập" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(checked.size / rows.length * 100)}"><div style="height:100%;background:#111827;width:${checked.size / rows.length * 100}%"></div></div><p>${checked.size}/${rows.length} bài hoàn thành</p>
         <h3>Vòng ${index + 1} / ${rounds.length}</h3>
         <label>Nghỉ giữa các vòng (giây)<input id="roundRestSeconds" type="number" min="0" max="3600" step="1" value="${restSeconds}" style="width:100px;margin:8px;padding:8px"></label>
+        <p id="exerciseRestClock" role="timer" hidden></p>
         <div id="roundExercises">${current.map(row => `<label style="display:flex;align-items:flex-start;gap:12px;padding:14px 0"><input type="checkbox" data-round-exercise="${row.key}" ${checked.has(row.key) ? "checked" : ""}><span><strong>${htmlText(row.exercise)}</strong><br>${htmlText(row.repsTime)}${row.rest ? " · Nghỉ " + htmlText(row.rest) : ""}${row.note ? "<br>" + htmlText(row.note) : ""}</span></label>`).join("")}</div>
         <div id="roundRestPanel" hidden><h3>Đã xong vòng ${index + 1} — nghỉ</h3><p id="roundCountdown" role="status"></p><button id="skipRoundRest" type="button">Bỏ qua nghỉ</button></div><p id="roundMessage" role="alert"></p><button id="exitRounds" type="button">Về Home</button></section>`;
     const input = document.getElementById("roundRestSeconds");
+    if (exerciseRestStarted !== null) {
+      const restClock = document.getElementById("exerciseRestClock");
+      restClock.hidden = false;
+      const tickExerciseRest = () => {
+        if (!active() || exerciseRestStarted === null) return;
+        const elapsed = Math.floor(Math.max(0, Date.now() - exerciseRestStarted) / 1000);
+        if (exerciseRestDuration === null) {
+          restClock.textContent = "Thời gian nghỉ (chưa có thời gian cài đặt): " + formatExerciseClock(elapsed);
+        } else if (elapsed < exerciseRestDuration) {
+          restClock.textContent = "Nghỉ còn: " + formatExerciseClock(exerciseRestDuration - elapsed);
+        } else {
+          restClock.textContent = "Nghỉ thêm: +" + formatExerciseClock(elapsed - exerciseRestDuration);
+        }
+        exerciseRestTimer = setTimeout(tickExerciseRest, 250);
+      };
+      tickExerciseRest();
+    }
     app.querySelectorAll('[data-round-exercise]').forEach(box => {
       const row = current.find(r => r.key === box.dataset.roundExercise);
-      if (box.checked || !parseExerciseClock(row.repsTime)) return;
+      if (box.checked) return;
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = '▶ Bắt đầu';
       button.setAttribute('aria-label', 'Bắt đầu tính giờ ' + row.exercise);
@@ -133,6 +160,32 @@ function renderRoundWorkout(app, item, rows, active) {
       button.onclick = () => {
         if (!active() || resting || saved) return;
         if (closeExerciseClock) closeExerciseClock();
+        if (exerciseRestStarted !== null) {
+          try {
+            const today = getTodayData();
+            today.workoutRestEntries = [...(today.workoutRestEntries || []), {
+              workoutId: item.workoutId || item.personalWorkoutId || '',
+              workoutName: item.activity || 'Calisthenics',
+              kind: exerciseRestSource.kind,
+              round: exerciseRestSource.round,
+              afterExercise: exerciseRestSource.exercise,
+              nextExercise: row.exercise,
+              plannedSeconds: exerciseRestDuration,
+              actualSeconds: Math.max(0, (Date.now() - exerciseRestStarted) / 1000),
+              startedAt: new Date(exerciseRestStarted).toISOString(),
+              endedAt: new Date().toISOString()
+            }];
+            saveTodayData(today);
+          } catch (error) {
+            document.getElementById('roundMessage').textContent = 'Chưa lưu được thời gian nghỉ: ' + error.message;
+            return;
+          }
+        }
+        exerciseRestStarted = null;
+        if (exerciseRestTimer !== null) clearTimeout(exerciseRestTimer);
+        exerciseRestTimer = null;
+        document.getElementById("exerciseRestClock").hidden = true;
+        if (!parseExerciseClock(row.repsTime)) return;
         closeExerciseClock = openExerciseClock(row, active, () => {
           box.checked = true;
           box.onchange(); // Use the existing checklist/progress flow unchanged.
@@ -157,6 +210,12 @@ function renderRoundWorkout(app, item, rows, active) {
       if (!active() || resting || saved) return;
       if (box.checked) checked.add(box.dataset.roundExercise);else checked.delete(box.dataset.roundExercise);
       if (!current.every(row => checked.has(row.key))) {
+        if (box.checked) {
+          exerciseRestStarted = Date.now();
+          const completedRow = current.find(row => row.key === box.dataset.roundExercise);
+          exerciseRestDuration = parseRestSeconds(completedRow.rest);
+          exerciseRestSource = {kind: 'exercise', round: rounds[index], exercise: completedRow.exercise};
+        } else exerciseRestStarted = null;
         render();
         return;
       }
@@ -164,30 +223,11 @@ function renderRoundWorkout(app, item, rows, active) {
         finish();
         return;
       }
+      exerciseRestStarted = Date.now();
+      exerciseRestDuration = restSeconds;
+      exerciseRestSource = {kind: 'round', round: rounds[index], exercise: current.find(row => row.key === box.dataset.roundExercise).exercise};
+      index++;
       render();
-      resting = true;
-      document.getElementById("roundExercises").hidden = true;
-      document.getElementById("roundRestPanel").hidden = false;
-      document.getElementById("roundRestSeconds").disabled = true;
-      const deadline = Date.now() + restSeconds * 1000;
-      function next() {
-        stop();
-        if (!active() || !resting) return;
-        resting = false;
-        index++;
-        render();
-      }
-      document.getElementById("skipRoundRest").onclick = next;
-      function tick() {
-        if (!active()) {
-          stop();
-          return;
-        }
-        const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-        document.getElementById("roundCountdown").textContent = remaining + " giây · tiếp theo vòng " + (index + 2);
-        if (!remaining) next();else timer = setTimeout(tick, 250);
-      }
-      tick();
     });
   }
   function finish() {
@@ -204,6 +244,14 @@ function renderRoundWorkout(app, item, rows, active) {
     }
   }
   render();
+}
+function parseRestSeconds(value) {
+  const text = String(value ?? '').trim().toLowerCase();
+  const match = text.match(/^(\d+(?:[.,]\d+)?)\s*(s|giây|sec|seconds?|phút|min|minutes?)?$/);
+  if (!match) return null;
+  const amount = Number(match[1].replace(',', '.'));
+  const seconds = amount * (/^(phút|min|minutes?)$/.test(match[2] || '') ? 60 : 1);
+  return Number.isFinite(seconds) ? Math.ceil(seconds) : null;
 }
 function parseExerciseClock(value) {
   const text = String(value ?? '').trim().toLowerCase();
