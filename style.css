@@ -287,3 +287,5 @@
 #nextExerciseName{font-size:20px;font-weight:600;overflow-wrap:anywhere}
 #restError{color:#b91c1c}
 #app .rest-dialog #startNextExercise{min-height:56px;padding:14px 22px;font-size:18px;border-radius:12px}
+.auto-workout{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0;font-size:16px;font-weight:600;cursor:pointer}
+.auto-workout input{width:22px;height:22px;accent-color:#111827}

@@ -99,6 +99,7 @@ function renderRoundWorkout(app, item, rows, active) {
   let exerciseRestDuration = null;
   let exerciseRestSource = null;
   let exerciseRestTimer = null;
+  let automatic = false;
   const rounds = [...new Set(rows.map(row => row.round))];
   const checked = new Set();
   const started = Date.now();
@@ -128,11 +129,19 @@ function renderRoundWorkout(app, item, rows, active) {
     app.innerHTML = `<section class="card"><h2>${htmlText(item.activity || "Calisthenics")}</h2><p>Mục tiêu: ${htmlText(item.duration || "")} · ${htmlText(item.target || rounds.length + " vòng")}</p><p>Workout Library</p>
         <div class="progress-bar" role="progressbar" aria-label="Tiến độ bài tập" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(checked.size / rows.length * 100)}"><div style="height:100%;background:#111827;width:${checked.size / rows.length * 100}%"></div></div><p>${checked.size}/${rows.length} bài hoàn thành</p>
         <h3>Vòng ${index + 1} / ${rounds.length}</h3>
+        <label class="auto-workout"><input id="automaticWorkout" type="checkbox" ${automatic ? 'checked' : ''}> Tự động chuyển động tác</label>
         <label>Nghỉ giữa các vòng (giây)<input id="roundRestSeconds" type="number" min="0" max="3600" step="1" value="${restSeconds}" style="width:100px;margin:8px;padding:8px"></label>
-        <dialog id="exerciseRestDialog" class="rest-dialog" aria-labelledby="restTitle"><h2 id="restTitle">Thời gian nghỉ</h2><p id="exerciseRestLabel"></p><div id="exerciseRestClock" role="timer"></div><p id="nextExerciseName"></p><p id="restError" role="alert"></p><button id="startNextExercise" type="button">▶ Bắt đầu động tác tiếp theo</button></dialog>
+        <dialog id="exerciseRestDialog" class="rest-dialog" aria-labelledby="restTitle"><h2 id="restTitle">Thời gian nghỉ</h2><p id="exerciseRestLabel"></p><div id="exerciseRestClock" role="timer"></div><p id="nextExerciseName"></p><label class="auto-workout"><input id="automaticRest" type="checkbox" ${automatic ? 'checked' : ''}> Tự động chuyển động tác</label><p id="restError" role="alert"></p><button id="startNextExercise" type="button">▶ Bắt đầu động tác tiếp theo</button></dialog>
         <div id="roundExercises">${current.map(row => `<label style="display:flex;align-items:flex-start;gap:12px;padding:14px 0"><input type="checkbox" data-round-exercise="${row.key}" ${checked.has(row.key) ? "checked" : ""}><span><strong>${htmlText(row.exercise)}</strong><br>${htmlText(row.repsTime)}${row.rest ? " · Nghỉ " + htmlText(row.rest) : ""}${row.note ? "<br>" + htmlText(row.note) : ""}</span></label>`).join("")}</div>
         <div id="roundRestPanel" hidden><h3>Đã xong vòng ${index + 1} — nghỉ</h3><p id="roundCountdown" role="status"></p><button id="skipRoundRest" type="button">Bỏ qua nghỉ</button></div><p id="roundMessage" role="alert"></p><button id="exitRounds" type="button">Về Home</button></section>`;
     const input = document.getElementById("roundRestSeconds");
+    const updateAutomatic = enabled => {
+      automatic = enabled;
+      document.getElementById('automaticWorkout').checked = enabled;
+      document.getElementById('automaticRest').checked = enabled;
+    };
+    document.getElementById('automaticWorkout').onchange = event => updateAutomatic(event.target.checked);
+    document.getElementById('automaticRest').onchange = event => updateAutomatic(event.target.checked);
     if (exerciseRestStarted !== null) {
       const restClock = document.getElementById("exerciseRestClock");
       const restLabel = document.getElementById("exerciseRestLabel");
@@ -148,10 +157,14 @@ function renderRoundWorkout(app, item, rows, active) {
         } else {
           restLabel.textContent = "Nghỉ thêm";
           restClock.textContent = "+" + formatExerciseClock(elapsed - exerciseRestDuration);
+          if (automatic) {
+            document.getElementById('startNextExercise').click();
+            if (exerciseRestStarted === null) return;
+          }
         }
         exerciseRestTimer = setTimeout(tickExerciseRest, 250);
       };
-      tickExerciseRest();
+      exerciseRestTimer = setTimeout(tickExerciseRest, 0);
     }
     app.querySelectorAll('[data-round-exercise]').forEach(box => {
       const row = current.find(r => r.key === box.dataset.roundExercise);
@@ -181,6 +194,7 @@ function renderRoundWorkout(app, item, rows, active) {
             }];
             saveTodayData(today);
           } catch (error) {
+            updateAutomatic(false);
             const message = 'Chưa lưu được thời gian nghỉ: ' + error.message;
             document.getElementById('roundMessage').textContent = message;
             document.getElementById('restError').textContent = message;
@@ -196,7 +210,7 @@ function renderRoundWorkout(app, item, rows, active) {
         closeExerciseClock = openExerciseClock(row, active, () => {
           box.checked = true;
           box.onchange(); // Use the existing checklist/progress flow unchanged.
-        }, button);
+        }, button, () => automatic, updateAutomatic);
       };
     });
     if (exerciseRestStarted !== null) {
@@ -286,12 +300,12 @@ function exerciseClockSeconds(spec, elapsedMs) {
 function formatExerciseClock(seconds) {
   return String(Math.floor(seconds / 60)).padStart(2,'0') + ':' + String(seconds % 60).padStart(2,'0');
 }
-function openExerciseClock(row, active, complete, trigger) {
+function openExerciseClock(row, active, complete, trigger, isAutomatic = () => false, setAutomatic = () => {}) {
   const spec = parseExerciseClock(row.repsTime);
   const dialog = document.createElement('dialog');
   dialog.className = 'exercise-clock';
   dialog.setAttribute('aria-label', 'Đồng hồ ' + row.exercise);
-  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><label><input type="checkbox" data-clock-complete> Hoàn thành</label></div>`;
+  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p><label class="auto-workout"><input type="checkbox" data-clock-auto ${isAutomatic() ? 'checked' : ''}> Tự động chuyển động tác</label><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><label><input type="checkbox" data-clock-complete> Hoàn thành</label></div>`;
   document.body.append(dialog);
   let timer=null, closed=false, paused=false, elapsed=0, started=Date.now();
   const close = () => {
@@ -301,6 +315,8 @@ function openExerciseClock(row, active, complete, trigger) {
   };
   dialog.querySelector('.exercise-clock-close').onclick = close;
   dialog.addEventListener('cancel', event => {event.preventDefault();close();});
+  const autoControl = dialog.querySelector('[data-clock-auto]');
+  if (autoControl) autoControl.onchange = event => setAutomatic(event.target.checked);
   dialog.querySelector('[data-clock-complete]').onchange = () => {
     if (!active()) {close();return;}
     close(); complete();
@@ -317,6 +333,7 @@ function openExerciseClock(row, active, complete, trigger) {
     const seconds=exerciseClockSeconds(spec,elapsed+(paused?0:Date.now()-started));
     dialog.querySelector('[role="timer"]').textContent=formatExerciseClock(seconds);
     if(spec.mode==='down' && seconds===0){
+      if (isAutomatic()) { close(); complete(); return; }
       dialog.querySelector('.exercise-clock-end').textContent='Hết giờ';
       pause.disabled=true; return; // Never auto-tick or advance a round.
     }
