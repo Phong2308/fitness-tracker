@@ -105,6 +105,7 @@ function renderRoundWorkout(app, item, rows, active) {
   const rounds = [...new Set(rows.map(row => row.round))];
   const checked = new Set();
   const started = Date.now();
+  const sessionId = started + '-' + Math.random().toString(36).slice(2);
   let index = 0,
     restSeconds = item.personalWorkoutId ? item.restSeconds : 60,
     timer = null,
@@ -254,10 +255,26 @@ function renderRoundWorkout(app, item, rows, active) {
         const restDialog = document.getElementById("exerciseRestDialog");
         if (restDialog.open) restDialog.close();
         if (!parseExerciseClock(timedRow.repsTime)) return;
-        closeExerciseClock = openExerciseClock(timedRow, active, () => {
+        closeExerciseClock = openExerciseClock(timedRow, active, result => {
+          try {
+            const today = getTodayData();
+            const id = sessionId + ':' + row.key;
+            today.workoutExerciseResults = (today.workoutExerciseResults || []).filter(entry => entry.id !== id);
+            today.workoutExerciseResults.push({
+              id, sessionId, workoutId: item.workoutId || item.personalWorkoutId || '',
+              workoutName: item.activity || 'Calisthenics', exercise: row.exercise,
+              round: row.round, order: row.order, target: row.repsTime || '',
+              actualSeconds: result.actualSeconds, actualReps: result.actualReps,
+              completedAt: new Date().toISOString()
+            });
+            saveTodayData(today);
+          } catch (error) {
+            return 'Chưa lưu được kết quả: ' + error.message;
+          }
           box.checked = true;
-          box.onchange(); // Use the existing checklist/progress flow unchanged.
-        }, button, () => automatic, updateAutomatic, sound, updateSound, updateSoundSeconds);
+          box.onchange();
+          return '';
+        }, button, () => automatic, updateAutomatic, sound, updateSound, updateSoundSeconds, row);
       };
     });
     if (exerciseRestStarted !== null) {
@@ -399,12 +416,12 @@ function createWorkoutSound() {
   };
   return sound;
 }
-function openExerciseClock(row, active, complete, trigger, isAutomatic = () => false, setAutomatic = () => {}, sound = {enabled:false, countdown:5, beep() {}}, setSound = () => {}, setSoundSeconds = () => {}) {
+function openExerciseClock(row, active, complete, trigger, isAutomatic = () => false, setAutomatic = () => {}, sound = {enabled:false, countdown:5, beep() {}}, setSound = () => {}, setSoundSeconds = () => {}, originalRow = row) {
   const spec = parseExerciseClock(row.repsTime);
   const dialog = document.createElement('dialog');
   dialog.className = 'exercise-clock';
   dialog.setAttribute('aria-label', 'Đồng hồ ' + row.exercise);
-  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p><details class="workout-settings"><summary>Tùy chọn tập luyện</summary><label class="auto-workout"><input type="checkbox" data-clock-auto ${isAutomatic() ? 'checked' : ''}> Tự động chuyển động tác</label><label class="auto-workout"><input type="checkbox" data-clock-sound ${sound.enabled ? 'checked' : ''}> Âm báo đếm giờ</label><label class="auto-duration">Báo trong <input type="number" min="1" step="1" inputmode="numeric" data-clock-sound-seconds value="${sound.countdown}"> giây cuối</label></details><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><label><input type="checkbox" data-clock-complete> Hoàn thành</label></div>`;
+  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p>${parseExerciseClock(originalRow.repsTime)?.mode === 'up' ? '<label class="auto-duration">Số lần thực tế <input type="number" min="0" step="1" inputmode="numeric" data-clock-reps placeholder="Không bắt buộc"></label>' : ''}<p data-clock-error role="alert"></p><details class="workout-settings"><summary>Tùy chọn tập luyện</summary><label class="auto-workout"><input type="checkbox" data-clock-auto ${isAutomatic() ? 'checked' : ''}> Tự động chuyển động tác</label><label class="auto-workout"><input type="checkbox" data-clock-sound ${sound.enabled ? 'checked' : ''}> Âm báo đếm giờ</label><label class="auto-duration">Báo trong <input type="number" min="1" step="1" inputmode="numeric" data-clock-sound-seconds value="${sound.countdown}"> giây cuối</label></details><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><button type="button" data-clock-complete>Hoàn thành</button></div>`;
   document.body.append(dialog);
   let timer=null, closed=false, paused=false, elapsed=0, started=Date.now();
   const close = () => {
@@ -420,10 +437,21 @@ function openExerciseClock(row, active, complete, trigger, isAutomatic = () => f
   if (soundControl) soundControl.onchange = event => setSound(event.target.checked);
   const soundSecondsControl = dialog.querySelector('[data-clock-sound-seconds]');
   if (soundSecondsControl) soundSecondsControl.onchange = event => setSoundSeconds(event.target);
-  dialog.querySelector('[data-clock-complete]').onchange = () => {
+  const finishExercise = () => {
     if (!active()) {close();return;}
-    close(); complete();
+    const repsField = dialog.querySelector('[data-clock-reps]');
+    const reps = repsField && repsField.value !== '' ? Number(repsField.value) : null;
+    if (reps !== null && (!Number.isSafeInteger(reps) || reps < 0)) {
+      dialog.querySelector('[data-clock-error]').textContent = 'Nhập số lần thực tế hợp lệ.';
+      return;
+    }
+    const result = {actualSeconds: Math.max(0, (elapsed + (paused ? 0 : Date.now() - started)) / 1000), actualReps: reps};
+    const error = complete(result);
+    if (error) { dialog.querySelector('[data-clock-error]').textContent = error; return; }
+    close();
   };
+  dialog.querySelector('[data-clock-complete]').onclick = finishExercise;
+  dialog.querySelector('[data-clock-complete]').onchange = finishExercise;
   const pause=dialog.querySelector('[data-clock-pause]');
   pause.onclick = () => {
     if (!active()) {close();return;}
@@ -434,16 +462,17 @@ function openExerciseClock(row, active, complete, trigger, isAutomatic = () => f
   function tick() {
     if (closed) return;
     if (!active()) {close();return;}
-    const seconds=exerciseClockSeconds(spec,elapsed+(paused?0:Date.now()-started));
+    const elapsedMs = elapsed + (paused ? 0 : Date.now() - started);
+    const seconds=exerciseClockSeconds(spec,elapsedMs);
     if (spec.mode === 'down' && !paused && seconds <= sound.countdown && seconds !== lastSoundSecond) {
       sound.beep(seconds === 0);
       lastSoundSecond = seconds;
     }
-    dialog.querySelector('[role="timer"]').textContent=formatExerciseClock(seconds);
+    const overtime = spec.mode === 'down' && elapsedMs >= spec.seconds * 1000;
+    dialog.querySelector('[role="timer"]').textContent = overtime ? '+' + formatExerciseClock(Math.floor((elapsedMs - spec.seconds * 1000) / 1000)) : formatExerciseClock(seconds);
     if(spec.mode==='down' && seconds===0){
-      if (isAutomatic()) { close(); complete(); return; }
-      dialog.querySelector('.exercise-clock-end').textContent='Hết giờ';
-      pause.disabled=true; return; // Never auto-tick or advance a round.
+      if (isAutomatic()) { finishExercise(); return; }
+      dialog.querySelector('.exercise-clock-end').textContent='Đã đạt mục tiêu · đang tính thêm';
     }
     timer=setTimeout(tick,200);
   }

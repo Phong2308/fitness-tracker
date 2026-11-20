@@ -26,6 +26,10 @@ function showHome() {
   const percent = homeProgress(today, plan);
   const targets = getHabitTargets();
   const load = homeLoadState[getCurrentUserId()];
+  const exerciseHistory = Object.values(loadLocalData())
+    .filter(day => day && day.userId === getCurrentUserId() && Array.isArray(day.workoutExerciseResults))
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    .flatMap(day => day.workoutExerciseResults.map(entry => ({...entry, date: day.date})));
   app.dataset.draft = "false";
   const displayTarget = kind => targets[kind] > 0 ? kind === "waterMl" ? targets[kind] / 1000 : targets[kind] : "Chưa đặt";
   const habitCard = (kind, title, unit, label, step) => `<article class="habit-item">
@@ -56,6 +60,7 @@ function showHome() {
         <div class="replacement-workout"><h3>Workout thay thế</h3><label for="actualWorkoutType">Hoạt động</label><select id="actualWorkoutType" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font:inherit">${Object.entries(WORKOUT_TYPES).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select>
         <div class="workout-actions"><button id="startReplacement" type="button">Bắt đầu bài thay thế</button><button id="personalWorkouts" type="button">Bài tập của tôi · + Tạo bài</button></div>
         ${(today.workoutEntries || []).map(e => `<p>✅ ${WORKOUT_TYPES[e.type]} · ${e.minutes} phút · ${e.rounds === null ? e.distance + " " + e.distanceUnit : e.rounds + " vòng"}${e.note ? " · " + htmlText(e.note) : ""}</p>`).join("")}
+        <details><summary>Lịch sử kết quả động tác</summary>${exerciseHistory.map(entry => `<p>${htmlText(entry.date)} · ${htmlText(entry.workoutName)} · Vòng ${htmlText(entry.round)}<br><strong>${htmlText(entry.exercise)}</strong> · Mục tiêu ${htmlText(entry.target)} · Thực tế ${entry.actualReps === null || entry.actualReps === undefined ? '' : htmlText(entry.actualReps) + ' lần · '}${formatExerciseClock(Math.floor(Math.max(0, Number(entry.actualSeconds) || 0)))}</p>`).join('') || '<p>Chưa có kết quả động tác trên thiết bị này.</p>'}</details>
         <p class="local-status">${pendingFitnessDays(getCurrentUserId()).length ? "Có dữ liệu trên máy chưa đồng bộ." : "Dữ liệu đã gửi sẽ được giữ lại trên máy."}</p><button id="syncFitnessButton" type="button" ${fitnessSyncBusy ? "disabled" : ""}>${fitnessSyncBusy ? "Đang đồng bộ…" : "Đồng bộ Google Sheet"}</button><p role="status" class="local-status">${htmlText(fitnessSyncMessages[getCurrentUserId()] || "Đồng bộ thói quen, cơ thể và tổng kết workout vào Daily Log.")}</p></div></section>`;
   document.getElementById("syncFitnessButton").onclick = syncFitnessToSheet;
   const scheduleButton = document.createElement('button');
