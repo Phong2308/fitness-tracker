@@ -458,6 +458,8 @@ function openExerciseClock(row, active, complete, trigger, isAutomatic = () => f
     if (!paused) elapsed += Date.now()-started; else started=Date.now();
     paused=!paused; pause.textContent=paused?'Tiếp tục':'Tạm dừng';
   };
+  const repsField = dialog.querySelector('[data-clock-reps]');
+  if (repsField) repsField.onfocus = () => { if (!paused) pause.onclick(); };
   let lastSoundSecond = null;
   function tick() {
     if (closed) return;
