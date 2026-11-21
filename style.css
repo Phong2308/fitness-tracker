@@ -360,7 +360,7 @@ body:has(.home-dashboard), body:has(.workout-session) {
 .exercise-clock-end, #exerciseRestLabel { color: #b7cbd8; }
 .exercise-clock-close { background: #263e51; color: #ecfbff; }
 .exercise-clock-actions button, #app .rest-dialog #startNextExercise { background: #76e5d8; color: #092d34; border: 0; }
-.exercise-clock-actions button[data-clock-pause] { background: #263e51; color: #e9f9fb; }
+.exercise-clock-actions button[data-clock-complete] { width: min(100%, 360px); min-height: 64px; font-size: 21px; font-weight: 700; }
 .exercise-clock input, .rest-dialog input { background: #0c1928; color: #f2fbff; border: 1px solid #466074; }
 .exercise-clock .auto-duration, .rest-dialog .auto-duration { color: #d4e6ef; }
 .exercise-clock input::placeholder, .rest-dialog input::placeholder { color: #a9becb; opacity: 1; }
