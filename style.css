@@ -365,3 +365,15 @@ body:has(.home-dashboard), body:has(.workout-session) {
 .exercise-clock .auto-duration, .rest-dialog .auto-duration { color: #d4e6ef; }
 .exercise-clock input::placeholder, .rest-dialog input::placeholder { color: #a9becb; opacity: 1; }
 .exercise-clock [data-clock-reps] { width: 120px; }
+
+/* Rest timer typography */
+#app .rest-dialog { padding: 40px 24px; }
+#app .rest-dialog h2 { font-size: clamp(27px, 7vw, 38px) !important; line-height: 1.2; }
+#exerciseRestLabel { margin: 24px 0 6px; font-size: 20px; line-height: 1.4; }
+#exerciseRestClock { font-size: clamp(48px, 19vw, 120px); line-height: 1.1; overflow-wrap: anywhere; }
+#nextExerciseName { margin: 20px 0 24px; font-size: 23px; line-height: 1.35; }
+@media (max-height: 600px) {
+  #app .rest-dialog { padding: 24px 20px; }
+  #exerciseRestLabel { margin-top: 14px; }
+  #nextExerciseName { margin: 12px 0 16px; }
+}
