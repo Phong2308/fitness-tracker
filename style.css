@@ -377,3 +377,38 @@ body:has(.home-dashboard), body:has(.workout-session) {
   #exerciseRestLabel { margin-top: 14px; }
   #nextExerciseName { margin: 12px 0 16px; }
 }
+
+/* Profile selection on mobile and desktop */
+#app:has(.profile-welcome) { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; }
+#app .profile-welcome { width: 100%; margin: 0 auto; padding: 30px 24px; }
+#app .profile-welcome .profile-mark { width: 64px; height: 64px; margin: 0 auto 18px; font-size: 32px; }
+#app .profile-welcome .profile-brand { text-align: center; margin-bottom: 12px; }
+#app .profile-welcome h2 { text-align: center; font-size: clamp(25px, 6.8vw, 29px) !important; line-height: 1.25; }
+#app .profile-welcome .profile-intro { text-align: center; font-size: 16px; margin: 0 0 28px; }
+#app .profile-welcome .profile-label { font-size: 16px; margin-bottom: 10px; }
+#app .profile-welcome #userDropdown { min-height: 72px; padding: 16px; font-size: 20px; }
+#app .profile-welcome .profile-divider { margin: 22px 0; }
+#app .profile-welcome #createUserBtn { width: 100%; min-height: 56px; padding: 14px 18px; font-size: 17px; }
+#app .profile-welcome .profile-note { text-align: center; font-size: 14px; margin-top: 18px; }
+@media (max-height: 700px) {
+  #app .profile-welcome { padding: 24px 20px; }
+  #app .profile-welcome .profile-mark { margin-bottom: 12px; }
+  #app .profile-welcome .profile-intro { margin-bottom: 18px; }
+  #app .profile-welcome .profile-divider { margin: 16px 0; }
+}
+
+/* Exercise timer layout */
+.exercise-clock { width: min(88vw, 560px); padding: 48px 20px 28px; }
+.exercise-clock h2 { margin: 0 0 14px; line-height: 1.2; }
+.exercise-clock-number {
+  font-family: system-ui, sans-serif;
+  font-size: clamp(58px, 20vw, 132px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+@media (max-height: 600px) {
+  .exercise-clock { padding-top: 42px; padding-bottom: 20px; }
+  .exercise-clock h2 { margin-bottom: 10px; }
+}
