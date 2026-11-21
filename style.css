@@ -295,3 +295,73 @@
 .workout-settings{margin:14px 0;padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;text-align:left}
 .workout-settings summary{cursor:pointer;font-size:15px;font-weight:600;color:#475569}
 .workout-settings .auto-workout,.workout-settings .auto-duration{justify-content:flex-start;flex-wrap:wrap}
+
+/* Fitness dashboard and workout session */
+body:has(.home-dashboard), body:has(.workout-session) {
+  background: #080e19;
+  color: #eff6ff;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.home-dashboard { color: #eff6ff; font-family: 'DM Sans', system-ui, sans-serif; }
+.home-dashboard .header h1 { color: #f4f8ff; font-size: clamp(30px, 8vw, 42px); letter-spacing: -1.5px; }
+.home-dashboard .header p { color: #a6b9cc; font-size: 15px; }
+.home-brand > span { color: #6fded6; font-size: 12px; letter-spacing: 1.8px; }
+.home-brand button { background: #18283a; color: #e6f5fb; border-color: #344b61; }
+.home-dashboard .card, .home-dashboard .home-habit {
+  background: #111d2b;
+  border: 1px solid #253b50;
+  box-shadow: 0 12px 30px #0003;
+  color: #eff6ff;
+}
+.home-dashboard .home-progress { background: linear-gradient(145deg, #14283b, #111d2b); }
+.home-progress > p, .home-streak p { color: #b7cbd8; font-size: 14px; }
+.home-ring { background: conic-gradient(#64dfd3 var(--progress), #263d4e 0); }
+.home-ring span { background: #14283b; color: #f5fcff; }
+.home-dashboard .home-streak { background: transparent; border: 0; border-top: 1px solid #30485b; box-shadow: none; }
+.home-dashboard .home-workout { background: linear-gradient(135deg, #0d4b55, #113345 65%, #151f32); border: 1px solid #31767a; }
+.home-workout > h2, .home-workout > .habit-item p, .home-alternative label { color: #c2e8e6; }
+.home-workout button[data-start-workout] { background: #80eadc; color: #102d37; }
+.home-dashboard .home-shortcuts button { min-height: 56px; padding: 12px; background: #142536; border-color: #30485b; color: #d9f5f2; font-size: 16px; line-height: 1.3; }
+.home-dashboard .home-habits { background: transparent; border: 0; box-shadow: none; }
+.home-habit p, .home-habit label, .home-habits > details, .home-sync p { color: #b7cbd8; font-size: 14px; }
+.home-dashboard .home-habit input, .home-dashboard .home-body input,
+.home-dashboard .home-body select, .home-dashboard .home-alternative select {
+  background: #0c1725 !important; border: 1px solid #3a5366 !important; color: #eef8ff !important;
+}
+.home-dashboard button { background: #65d9ce; color: #08262d; border: 0; font-weight: 700; }
+.home-dashboard .home-water-quick button { background: #16384f; color: #a9e1ff; }
+#app .home-dashboard .habit-target-line { color: #b7cbd8; }
+#app .home-dashboard .home-habit button[data-edit-target] { background: #253e4b; color: #d2f5f0; border: 1px solid #43605f; }
+#app .home-dashboard .home-habit button[data-edit-target]:hover { background: #305258; color: #fff; }
+.home-habit-meter { background: #263b4b; }
+.home-dashboard .home-sync button { background: #142536; color: #d9f5f2; border: 1px solid #426474; }
+.home-dashboard .local-status { color: #b7cbd8; }
+.home-dashboard :is(button,input,select,summary):focus-visible, .workout-session :is(button,input,summary):focus-visible,
+.exercise-clock :is(button,input):focus-visible, .rest-dialog :is(button,input):focus-visible { outline: 3px solid #80eadc; outline-offset: 3px; }
+
+.app .workout-session { background: linear-gradient(150deg, #142438, #101b2a); color: #edf7ff; border: 1px solid #2b4357; box-shadow: 0 16px 36px #0004; }
+.workout-session h2 { font-size: clamp(27px, 7vw, 36px); letter-spacing: -1px; margin: 0 0 10px; }
+.workout-session h3 { color: #e9f9f8; margin-top: 28px; }
+.workout-session > p, .workout-session > label { color: #b6ccd9; line-height: 1.5; }
+.app .workout-session .progress-bar { height: 8px; background: #2a4051; margin-top: 20px; }
+.workout-session .progress-bar > div { background: #71e4d7 !important; }
+.workout-session .workout-settings { border-color: #395468; background: #0c1928; }
+.workout-session .workout-settings summary { color: #d0e6ed; }
+.workout-session input:not([type="checkbox"]) { background: #0c1928; color: #f2fbff; border: 1px solid #466074; border-radius: 10px; }
+.workout-session input[type="checkbox"] { accent-color: #69ded0; width: 22px; height: 22px; }
+#roundExercises > label { color: #e6f2f9; border-top: 1px solid #304558; line-height: 1.55; }
+#roundExercises > label strong { color: #f7fcff; font-size: 17px; }
+.app .workout-session button { background: #65d9ce; color: #08262d; border: 0; font-weight: 700; }
+.app .workout-session #exitRounds { background: #263a4d; color: #e4f4f7; }
+.app .workout-session #startNextExercise { background: #76e5d8; color: #092d34; }
+.exercise-clock, .rest-dialog { background: #142337; color: #f3fbff; border: 1px solid #3c596e; box-shadow: 0 30px 80px #0009; }
+.exercise-clock::backdrop, .rest-dialog::backdrop { background: rgba(3, 9, 18, .84); backdrop-filter: blur(6px); }
+.exercise-clock-number, #exerciseRestClock { color: #8df3e5; }
+.exercise-clock-end, #exerciseRestLabel { color: #b7cbd8; }
+.exercise-clock-close { background: #263e51; color: #ecfbff; }
+.exercise-clock-actions button, #app .rest-dialog #startNextExercise { background: #76e5d8; color: #092d34; border: 0; }
+.exercise-clock-actions button[data-clock-pause] { background: #263e51; color: #e9f9fb; }
+.exercise-clock input, .rest-dialog input { background: #0c1928; color: #f2fbff; border: 1px solid #466074; }
+.exercise-clock .auto-duration, .rest-dialog .auto-duration { color: #d4e6ef; }
+.exercise-clock input::placeholder, .rest-dialog input::placeholder { color: #a9becb; opacity: 1; }
+.exercise-clock [data-clock-reps] { width: 120px; }

@@ -130,7 +130,7 @@ function renderRoundWorkout(app, item, rows, active) {
     if (exerciseRestTimer !== null) clearTimeout(exerciseRestTimer);
     exerciseRestTimer = null;
     const current = rows.filter(row => row.round === rounds[index]);
-    app.innerHTML = `<section class="card"><h2>${htmlText(item.activity || "Calisthenics")}</h2><p>Mục tiêu: ${htmlText(item.duration || "")} · ${htmlText(item.target || rounds.length + " vòng")}</p><p>Workout Library</p>
+    app.innerHTML = `<section class="card workout-session"><h2>${htmlText(item.activity || "Calisthenics")}</h2><p>Mục tiêu: ${htmlText(item.duration || "")} · ${htmlText(item.target || rounds.length + " vòng")}</p>
         <div class="progress-bar" role="progressbar" aria-label="Tiến độ bài tập" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(checked.size / rows.length * 100)}"><div style="height:100%;background:#111827;width:${checked.size / rows.length * 100}%"></div></div><p>${checked.size}/${rows.length} bài hoàn thành</p>
         <h3>Vòng ${index + 1} / ${rounds.length}</h3>
         <details class="workout-settings" id="workoutSettings"><summary>Tùy chọn tập luyện</summary>
@@ -415,7 +415,7 @@ function openExerciseClock(row, active, complete, trigger, isAutomatic = () => f
   const dialog = document.createElement('dialog');
   dialog.className = 'exercise-clock';
   dialog.setAttribute('aria-label', 'Đồng hồ ' + row.exercise);
-  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p>${parseExerciseClock(originalRow.repsTime)?.mode === 'up' ? '<label class="auto-duration">Số lần thực tế <input type="number" min="0" step="1" inputmode="numeric" data-clock-reps placeholder="Không bắt buộc"></label>' : ''}<p data-clock-error role="alert"></p><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><button type="button" data-clock-complete>Hoàn thành</button></div>`;
+  dialog.innerHTML = `<button type="button" class="exercise-clock-close" aria-label="Đóng đồng hồ">×</button><h2>${htmlText(row.exercise)}</h2><div class="exercise-clock-number" role="timer" aria-label="Thời gian">00:00</div><p class="exercise-clock-end" role="status"></p>${parseExerciseClock(originalRow.repsTime)?.mode === 'up' ? '<label class="auto-duration">Số lần thực tế <input type="number" min="0" step="1" inputmode="numeric" data-clock-reps placeholder="Số lần"></label>' : ''}<p data-clock-error role="alert"></p><div class="exercise-clock-actions"><button type="button" data-clock-pause>Tạm dừng</button><button type="button" data-clock-complete>Hoàn thành</button></div>`;
   document.body.append(dialog);
   let timer=null, closed=false, paused=false, elapsed=0, started=Date.now();
   const close = () => {
